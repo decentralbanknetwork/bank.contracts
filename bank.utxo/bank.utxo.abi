@@ -1,0 +1,143 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Jan 31 16:32:27 2019",
+    "version": "eosio::abi/1.1",
+    "structs": [
+        {
+            "name": "create",
+            "base": "",
+            "fields": [
+                {
+                    "name": "issuer",
+                    "type": "name"
+                },
+                {
+                    "name": "maximum_supply",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "issue",
+            "base": "",
+            "fields": [
+                {
+                    "name": "to",
+                    "type": "public_key"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "transfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "relayer",
+                    "type": "public_key"
+                },
+                {
+                    "name": "from",
+                    "type": "public_key"
+                },
+                {
+                    "name": "to",
+                    "type": "public_key"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                },
+                {
+                    "name": "fee",
+                    "type": "asset"
+                },
+                {
+                    "name": "nonce",
+                    "type": "uint64"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                },
+                {
+                    "name": "sig",
+                    "type": "signature"
+                }
+            ]
+        },
+        {
+            "name": "account",
+            "base": "",
+            "fields": [
+                {"name":"key", "type":"uint64"},
+                {"name":"publickey", "type":"public_key"},
+                {"name":"balance", "type":"asset"},
+            ]
+        },
+        {
+            "name": "currstats",
+            "base": "",
+            "fields": [
+                {"name":"supply", "type":"asset"},
+                {"name":"max_supply", "type":"asset"},
+                {"name":"issuer", "type":"name"}
+            ]
+        },
+        {
+            "name": "nonce",
+            "base": "",
+            "fields": [
+                {"name":"id", "type":"uint64"},
+                {"name":"publickey", "type":"public_key"},
+                {"name":"last_nonce", "type":"uint64"}
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "create",
+            "type": "create",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "issue",
+            "type": "issue",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transfer",
+            "type": "transfer",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [{
+        "name": "accounts",
+        "type": "account",
+        "index_type": "i64",
+        "key_names" : ["key"],
+        "key_types" : ["uint64"]
+    }, {
+        "name": "stats",
+        "type": "currstats",
+        "index_type": "i64",
+        "key_names" : ["currency"],
+        "key_types" : ["uint64"]
+    }, {
+        "name": "nonces",
+        "type": "nonce",
+        "index_type": "i64",
+        "key_names" : ["id"],
+        "key_types" : ["uint64"]
+    }],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
+}
