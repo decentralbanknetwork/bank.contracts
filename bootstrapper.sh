@@ -138,16 +138,16 @@ if [ $BOOTSTRAP -eq 1 ]; then
     echo -e "${CYAN}-----------------------SYSTEM CONTRACTS-----------------------${NC}"
     cleos set contract eosio.token $EOSIO_CONTRACTS_ROOT/eosio.token/
     cleos set contract eosio.msig $EOSIO_CONTRACTS_ROOT/eosio.msig/
-    cleos push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token
-    echo -e "      SYS TOKEN CREATED"
-    cleos push action eosio.token issue '[ "eosio", "1000000000.0000 SYS", "memo" ]' -p eosio
-    echo -e "      SYS TOKEN ISSUED"
+    cleos push action eosio.token create '[ "eosio", "10000000000.0000 BANK" ]' -p eosio.token
+    echo -e "      BANK TOKEN CREATED"
+    cleos push action eosio.token issue '[ "eosio", "1000000000.0000 BANK", "memo" ]' -p eosio
+    echo -e "      BANK TOKEN ISSUED"
     cleos set contract eosio $EOSIO_CONTRACTS_ROOT/eosio.bios/
     echo -e "      BIOS SET"
     cleos set contract eosio $EOSIO_CONTRACTS_ROOT/eosio.system/
     echo -e "      SYSTEM SET"
     cleos push action eosio setpriv '["eosio.msig", 1]' -p eosio@active
-    cleos push action eosio init '[0, "4,SYS"]' -p eosio@active
+    cleos push action eosio init '[0, "4,BANK"]' -p eosio@active
 
     # Import user keys
     echo -e "${CYAN}-----------------------USER KEYS-----------------------${NC}"
@@ -166,33 +166,33 @@ if [ $BOOTSTRAP -eq 1 ]; then
 
     # Create user accounts
     echo -e "${CYAN}-----------------------USER ACCOUNTS-----------------------${NC}"
-    cleos system newaccount eosio bank.shares EOS6XeRbyHP1wkfEvFeHJNccr4NA9QhnAr6cU21Kaar32Y5aHM5FP --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio bank.price EOS8dYVzNktdam3Vn31mSXcmbj7J7MzGNudqKb3MLW1wdxWJpEbrw --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio bank.utxo EOS7mJctpRnPPDhLHgnQVU3En7rvy3XHxrQPcsCqU8XZBV6tc7tMW --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestusera EOS6HfoynFKZ1Msq1bKNwtSTTpEu8NssYMcgsy6nHqhRp3mz7tNkB --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestuserb EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8 --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestuserc EOS7LpZDPKwWWXgJnNYnX6LCBgNqCEqugW9oUQr7XqcSfz7aSFk8o --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestuserd EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestusere EOS76Pcyw1Hd7hW8hkZdUE1DQ3UiRtjmAKQ3muKwidRqmaM8iNtDy --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestuserf EOS7jnmGEK9i33y3N1aV29AYrFptyJ43L7pATBEuVq4fVXG1hzs3G --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestuserg EOS7vr4QpGP7ixUSeumeEahHQ99YDE5jiBucf1B2zhuidHzeni1dD --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio bank.shares EOS6XeRbyHP1wkfEvFeHJNccr4NA9QhnAr6cU21Kaar32Y5aHM5FP --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio bank.price EOS8dYVzNktdam3Vn31mSXcmbj7J7MzGNudqKb3MLW1wdxWJpEbrw --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio bank.utxo EOS7mJctpRnPPDhLHgnQVU3En7rvy3XHxrQPcsCqU8XZBV6tc7tMW --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestusera EOS6HfoynFKZ1Msq1bKNwtSTTpEu8NssYMcgsy6nHqhRp3mz7tNkB --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestuserb EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8 --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestuserc EOS7LpZDPKwWWXgJnNYnX6LCBgNqCEqugW9oUQr7XqcSfz7aSFk8o --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestuserd EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestusere EOS76Pcyw1Hd7hW8hkZdUE1DQ3UiRtjmAKQ3muKwidRqmaM8iNtDy --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestuserf EOS7jnmGEK9i33y3N1aV29AYrFptyJ43L7pATBEuVq4fVXG1hzs3G --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio dcbtestuserg EOS7vr4QpGP7ixUSeumeEahHQ99YDE5jiBucf1B2zhuidHzeni1dD --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
 
     # Deploy eosio.wrap
     echo -e "${CYAN}-----------------------EOSIO WRAP-----------------------${NC}"
     cleos wallet import --private-key 5J3JRDhf4JNhzzjEZAsQEgtVuqvsPPdZv4Tm6SjMRx1ZqToaray
-    cleos system newaccount eosio eosio.wrap EOS7LpGN1Qz5AbCJmsHzhG7sWEGd9mwhTXWmrYXqxhTknY2fvHQ1A --stake-cpu "50 SYS" --stake-net "10 SYS" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio eosio.wrap EOS7LpGN1Qz5AbCJmsHzhG7sWEGd9mwhTXWmrYXqxhTknY2fvHQ1A --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
     cleos push action eosio setpriv '["eosio.wrap", 1]' -p eosio@active
     cleos set contract eosio.wrap $EOSIO_CONTRACTS_ROOT/eosio.wrap/
 
     # Transfer EOS to testing accounts
-    echo -e "${CYAN}-----------------------TRANSFERRING SYS-----------------------${NC}"
-    cleos transfer eosio dcbtestusera "1000 SYS"
-    cleos transfer eosio dcbtestuserb "1000 SYS"
-    cleos transfer eosio dcbtestuserc "1000 SYS"
-    cleos transfer eosio dcbtestuserd "1000 SYS"
-    cleos transfer eosio dcbtestusere "1000 SYS"
-    cleos transfer eosio dcbtestuserf "1000 SYS"
-    cleos transfer eosio dcbtestuserg "1000 SYS"
+    echo -e "${CYAN}-----------------------TRANSFERRING BANK-----------------------${NC}"
+    cleos transfer eosio dcbtestusera "1000 BANK"
+    cleos transfer eosio dcbtestuserb "1000 BANK"
+    cleos transfer eosio dcbtestuserc "1000 BANK"
+    cleos transfer eosio dcbtestuserd "1000 BANK"
+    cleos transfer eosio dcbtestusere "1000 BANK"
+    cleos transfer eosio dcbtestuserf "1000 BANK"
+    cleos transfer eosio dcbtestuserg "1000 BANK"
 
     ## Deploy contracts
     echo -e "${CYAN}-----------------------DEPLOYING CONTRACTS-----------------------${NC}"
