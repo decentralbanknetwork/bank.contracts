@@ -1,4 +1,4 @@
-#include "eosio.price.hpp"
+#include "bank.price.hpp"
 
 void bankprice::create(asset initprice) {
     require_auth( _self );
