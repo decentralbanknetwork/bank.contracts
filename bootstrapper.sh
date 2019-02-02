@@ -26,7 +26,7 @@ alias cleos="cleos --url=${NODEOS_LOCATION}"
 ## HELPERS
 
 # function balance {
-#     cleos get table everipediaiq $1 accounts | jq ".rows[0].balance" | tr -d '"' | awk '{print $1}'
+#     cleos get table bank.token $1 accounts | jq ".rows[0].balance" | tr -d '"' | awk '{print $1}'
 # }
 
 assert ()
@@ -85,6 +85,14 @@ if [ $BUILD -eq 1 ]; then
     cd bank.utxo
     echo "Building bank.utxo..."
     /usr/local/bin/eosio-cpp -abigen bank.utxo.cpp -o bank.utxo.wasm -I bank.utxo.clauses.md -I bank.utxo.contracts.md
+
+    cd bank.token
+    echo "Building bank.token..."
+    /usr/local/bin/eosio-cpp -abigen bank.token.cpp -o bank.token.wasm -I bank.token.clauses.md -I bank.token.contracts.md
+
+    cd bank.safesnd
+    echo "Building bank.safesnd..."
+    /usr/local/bin/eosio-cpp -abigen bank.safesnd.cpp -o bank.safesnd.wasm
 
     cd ..
 fi
@@ -169,8 +177,8 @@ if [ $BOOTSTRAP -eq 1 ]; then
     cleos system newaccount eosio bank.shares EOS6XeRbyHP1wkfEvFeHJNccr4NA9QhnAr6cU21Kaar32Y5aHM5FP --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
     cleos system newaccount eosio bank.price EOS8dYVzNktdam3Vn31mSXcmbj7J7MzGNudqKb3MLW1wdxWJpEbrw --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
     cleos system newaccount eosio bank.utxo EOS7mJctpRnPPDhLHgnQVU3En7rvy3XHxrQPcsCqU8XZBV6tc7tMW --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestusera EOS6HfoynFKZ1Msq1bKNwtSTTpEu8NssYMcgsy6nHqhRp3mz7tNkB --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
-    cleos system newaccount eosio dcbtestuserb EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8 --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio bank.token EOS6HfoynFKZ1Msq1bKNwtSTTpEu8NssYMcgsy6nHqhRp3mz7tNkB --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
+    cleos system newaccount eosio bank.safesnd EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8 --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
     cleos system newaccount eosio dcbtestuserc EOS7LpZDPKwWWXgJnNYnX6LCBgNqCEqugW9oUQr7XqcSfz7aSFk8o --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
     cleos system newaccount eosio dcbtestuserd EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
     cleos system newaccount eosio dcbtestusere EOS76Pcyw1Hd7hW8hkZdUE1DQ3UiRtjmAKQ3muKwidRqmaM8iNtDy --stake-cpu "50 BANK" --stake-net "10 BANK" --buy-ram-kbytes 5000 --transfer
@@ -199,6 +207,15 @@ if [ $BOOTSTRAP -eq 1 ]; then
     cleos set contract bank.shares bank.shares/
     cleos set contract bank.price bank.price/
     cleos set contract bank.utxo bank.utxo/
+    cleos set contract bank.token bank.token/
+    cleos set contract bank.safesnd bank.safesnd/
+
+    # UNTESTED
+    # Grant permission for the bank.shares contract to issue more BANK tokens
+    cleos set action permission bank.shares eosio.token issue active -p eosio.token@active
+
+    # Grant code permissions for bank.safesnd
+    cleos set account permission bank.safesnd active '{ "threshold": 1, "keys": [{ "key": "EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8", "weight": 1 }], "accounts": [{ "permission": { "actor":"bank.safesnd","permission":"eosio.code" }, "weight":1 }] }' owner -p bank.safesnd
 fi
 
 echo -e "${CYAN}-----------------------COMPLETE-----------------------${NC}"
