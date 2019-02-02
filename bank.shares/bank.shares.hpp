@@ -21,10 +21,10 @@ class [[eosio::contract("bank.shares")]] bankshares : public contract {
         // List of auctions
         struct [[eosio::table]] auction {
             uint64_t id;
-            asset issue; // Amount of BANK being issued
-            asset iss_remain; // BANK left to be sold
-            asset current_ask; // Current asking price for 1 BANK, in CURR
-            asset ask_floor; // Minimum asking price for 1 BANK that you are willing to accept, in CURR
+            asset issue; // Amount of SYS_TOKEN_NAME being issued
+            asset iss_remain; // SYS_TOKEN_NAME left to be sold
+            asset current_ask; // Current asking price for 1 SYS_TOKEN_NAME, in CURR
+            asset ask_floor; // Minimum asking price for 1 SYS_TOKEN_NAME that you are willing to accept, in CURR
             time_point start_time; // Starting time of the auction
             time_point end_time; // Ending time of the auction
 
@@ -35,9 +35,9 @@ class [[eosio::contract("bank.shares")]] bankshares : public contract {
         // -------------ACTIONS-------------
         [[eosio::action]]
         startauction(
-            asset quantity, // Amount of BANK being issued
-            asset askstart, // Starting asking price for 1 BANK, in CURR
-            asset askfloor, // Minimum asking price for 1 BANK that you are willing to accept, in CURR
+            asset quantity, // Amount of SYS_TOKEN_NAME being issued
+            asset askstart, // Starting asking price for 1 SYS_TOKEN_NAME, in CURR
+            asset askfloor, // Minimum asking price for 1 SYS_TOKEN_NAME that you are willing to accept, in CURR
             string memo, // A memo
             time_point end_time // The ending time, in epoch milliseconds
         );
@@ -51,8 +51,8 @@ class [[eosio::contract("bank.shares")]] bankshares : public contract {
         buyshares(
             uint64_t auctionid, // ID of the auction you want to participate in
             name buyer, // The name of you, the buyer
-            asset buyamount, // The amount of BANK that you want to buy
-            asset maxbid // The maximum price per 1 BANK that you are willing to pay, in CURR
+            asset buyamount, // The amount of SYS_TOKEN_NAME that you want to buy
+            asset maxbid // The maximum price per 1 SYS_TOKEN_NAME that you are willing to pay, in CURR
         );
 
         // --------TABLE DEFINITIONS--------

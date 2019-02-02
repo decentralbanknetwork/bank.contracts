@@ -202,9 +202,7 @@ if [ $BOOTSTRAP -eq 1 ]; then
 
     # UNTESTED
     # Grant permission for the bank.shares contract to issue more BANK tokens
-    # May need to tweak this
     cleos set action permission bank.shares eosio.token issue active -p eosio.token@active
-
 fi
 
 echo -e "${CYAN}-----------------------COMPLETE-----------------------${NC}"

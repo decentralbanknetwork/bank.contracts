@@ -1,7 +1,7 @@
 #include "bank.shares.hpp"
 
 
-// Start a reverse Dutch auction exchange BANK (or SYS) for bank.token currency
+// Start a reverse Dutch auction exchange BANK (or SYS) [SYS_TOKEN_NAME] for bank.token currency
 [[eosio::action]]
 void bankshares::startauction(asset quantity, asset askstart, asset askfloor, string memo, time_point end_time) {
     // Check authorization
@@ -44,7 +44,7 @@ void bankshares::startauction(asset quantity, asset askstart, asset askfloor, st
     // Validate the time
     eosio_assert( end_time > now(), "Ending time of the auction must be in the future" );
 
-    // Issue more BANK by calling the system contract
+    // Issue more SYS_TOKEN_NAME by calling the system contract
     action issuance = action(
         permission_level{_self,"active"_n},
         "eosio.token"_n,
@@ -73,7 +73,7 @@ void bankshares::buyshares(uint64_t auctionid, name buyer, asset buyamount, asse
     // Returns the iterator to the 
     auto auctionsPack = update_ask_local(auctionid);
 
-    // Make sure the buy amount is in BANK / SYS tokens
+    // Make sure the buy amount is in SYS_TOKEN_NAME tokens
     eosio_assert( buyamount.symbol.name == SYS_TOKEN_NAME, "Invalid system token name in buyamount");
 
     // Make sure the bid is in the correct currency that the auction is asking for
@@ -83,13 +83,38 @@ void bankshares::buyshares(uint64_t auctionid, name buyer, asset buyamount, asse
     eosio_assert( maxbid.amount >= auctionsPack._it->current_ask.amount , "Your maximum bid is too low" );
 
     // Make sure there is suffient SYS_TOKEN_NAME left to sell. 
-    eosio_assert( auctionsPack._it->iss_remain >= buyamount.amount, "Not enough BANK left to buy");
+    eosio_assert( auctionsPack._it->iss_remain >= buyamount.amount, "Not enough SYS_TOKEN_NAME left to buy");
 
     // Make sure the seller has enough currency 
     banktoken::accounts accounts_tbl(buyer, buyer.value);
     auto accounts_it = accounts_tbl.find(sellamount.symbol.raw());
     eosio_assert(accounts_it != accounts_tbl.end(), "No balance found for the provided currency in bank.token");
-    eosio_assert(accounts_it->balance.amount >= (buyamount.amount * auctionsPack._it->current_ask.amount), "You don't have enough currency to make a complete purchase");
+    uint64_t currency_amount = (buyamount.amount * auctionsPack._it->current_ask.amount)
+    asset currencyPack = asset(int64_t(currency_amount), maxbid.symbol);
+    eosio_assert(accounts_it->balance.amount >= currency_amount), "You don't have enough currency to make a complete purchase");
+
+    // Have the buyer send the tokens to the the bank.shares contract
+    action givecurrency = action(
+        permission_level{buyer,"active"_n},
+        "bank.token"_n,
+        "transfer"_n,
+        {buyer, "bank.shares"_n, currencyPack, "memo" }
+    );
+    givecurrency.send();
+
+    // Give the buyer the SYS_TOKEN_NAME
+    action givesys = action(
+        permission_level{_self,"active"_n},
+        "eosio.token"_n,
+        "transfer"_n,
+        {_self, buyer, buyamount, "memo" }
+    );
+    givesys.send();
+
+    // Update the auction
+    auctionsPack._tbl.modify( auctionsPack._it, _self, [&]( auto& auct ) {
+        auct.current_ask = asset(int64_t(auctionsPack._it->iss_remain.amount - currencyPack.amount), buyamount.symbol);
+    });
 
 }
 
@@ -129,4 +154,4 @@ bankshares::AuctionPack bankshares::update_ask_local(uint64_t auctionid){
     return aPack;
 }
 
-EOSIO_DISPATCH(bankshares, (startauction)(updateask))
+EOSIO_DISPATCH(bankshares, (buyshares)(startauction)(updateask))
