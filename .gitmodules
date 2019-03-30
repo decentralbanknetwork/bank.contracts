@@ -1,0 +1,3 @@
+[submodule "bank.utxo"]
+	path = bank.utxo
+	url = https://github.com/chrisatanasian/eosio_utxo.git
