@@ -1,0 +1,652 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri Mar 22 16:27:05 2019",
+    "version": "eosio::abi/1.1",
+    "structs": [
+        {
+            "name": "account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "code",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "bail",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "bid",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "bidamt",
+                    "type": "asset"
+                },
+                {
+                    "name": "started",
+                    "type": "uint32"
+                },
+                {
+                    "name": "lastbid",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "cdp",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "created",
+                    "type": "uint32"
+                },
+                {
+                    "name": "collateral",
+                    "type": "asset"
+                },
+                {
+                    "name": "stablecoin",
+                    "type": "asset"
+                },
+                {
+                    "name": "live",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "close",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                }
+            ]
+        },
+        {
+            "name": "deposit",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "draw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "feed",
+            "base": "",
+            "fields": [
+                {
+                    "name": "total",
+                    "type": "asset"
+                },
+                {
+                    "name": "price",
+                    "type": "asset"
+                },
+                {
+                    "name": "stamp",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "liquify",
+            "base": "",
+            "fields": [
+                {
+                    "name": "bidder",
+                    "type": "name"
+                },
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "bidamt",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "lock",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "open",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "ram_payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "prop",
+            "base": "",
+            "fields": [
+                {
+                    "name": "cdp_type",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "deadline",
+                    "type": "uint32"
+                },
+                {
+                    "name": "proposer",
+                    "type": "name"
+                },
+                {
+                    "name": "yay",
+                    "type": "asset"
+                },
+                {
+                    "name": "nay",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "propose",
+            "base": "",
+            "fields": [
+                {
+                    "name": "proposer",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "clatrl",
+                    "type": "symbol"
+                },
+                {
+                    "name": "stabl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "max",
+                    "type": "uint64"
+                },
+                {
+                    "name": "gmax",
+                    "type": "uint64"
+                },
+                {
+                    "name": "pen",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee",
+                    "type": "uint64"
+                },
+                {
+                    "name": "beg",
+                    "type": "uint64"
+                },
+                {
+                    "name": "liq",
+                    "type": "uint64"
+                },
+                {
+                    "name": "tau",
+                    "type": "uint32"
+                },
+                {
+                    "name": "ttl",
+                    "type": "uint32"
+                },
+                {
+                    "name": "feeder",
+                    "type": "name"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "referended",
+            "base": "",
+            "fields": [
+                {
+                    "name": "proposer",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                }
+            ]
+        },
+        {
+            "name": "settle",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feeder",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                }
+            ]
+        },
+        {
+            "name": "shut",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                }
+            ]
+        },
+        {
+            "name": "stat",
+            "base": "",
+            "fields": [
+                {
+                    "name": "live",
+                    "type": "bool"
+                },
+                {
+                    "name": "last_vote",
+                    "type": "uint32"
+                },
+                {
+                    "name": "tau",
+                    "type": "uint32"
+                },
+                {
+                    "name": "ttl",
+                    "type": "uint32"
+                },
+                {
+                    "name": "feeder",
+                    "type": "name"
+                },
+                {
+                    "name": "cdp_type",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "global_ceil",
+                    "type": "uint64"
+                },
+                {
+                    "name": "debt_ceiling",
+                    "type": "uint64"
+                },
+                {
+                    "name": "stability_fee",
+                    "type": "uint64"
+                },
+                {
+                    "name": "beg",
+                    "type": "uint64"
+                },
+                {
+                    "name": "penalty_ratio",
+                    "type": "uint64"
+                },
+                {
+                    "name": "liquid8_ratio",
+                    "type": "uint64"
+                },
+                {
+                    "name": "fee_balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_stablecoin",
+                    "type": "asset"
+                },
+                {
+                    "name": "total_collateral",
+                    "type": "extended_asset"
+                }
+            ]
+        },
+        {
+            "name": "transfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "name"
+                },
+                {
+                    "name": "to",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "upfeed",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feeder",
+                    "type": "name"
+                },
+                {
+                    "name": "price",
+                    "type": "asset"
+                },
+                {
+                    "name": "cdp_type",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "vote",
+            "base": "",
+            "fields": [
+                {
+                    "name": "voter",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "against",
+                    "type": "bool"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "wipe",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "symbl",
+                    "type": "symbol_code"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "withdraw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "owner",
+                    "type": "name"
+                },
+                {
+                    "name": "quantity",
+                    "type": "asset"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "bail",
+            "type": "bail",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "close",
+            "type": "close",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "deposit",
+            "type": "deposit",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "draw",
+            "type": "draw",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "liquify",
+            "type": "liquify",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "lock",
+            "type": "lock",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "open",
+            "type": "open",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "propose",
+            "type": "propose",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "referended",
+            "type": "referended",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settle",
+            "type": "settle",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "shut",
+            "type": "shut",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transfer",
+            "type": "transfer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "upfeed",
+            "type": "upfeed",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "vote",
+            "type": "vote",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "wipe",
+            "type": "wipe",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "withdraw",
+            "type": "withdraw",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "accounts",
+            "type": "account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "bid",
+            "type": "bid",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "cdp",
+            "type": "cdp",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "feed",
+            "type": "feed",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "prop",
+            "type": "prop",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "stat",
+            "type": "stat",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
+}

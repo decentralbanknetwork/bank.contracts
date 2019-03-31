@@ -1,0 +1,18 @@
+{
+    "threshold": 1,
+    "keys": [
+      {
+        "key": "EOS6TnW2MQbZwXHWDHAYQazmdc3Sc1KGv4M9TSgsKZJSo43Uxs2Bx",
+        "weight": 1
+      }
+    ],
+    "accounts": [
+      {
+        "permission": {
+          "actor": "bank.cdp",
+          "permission": "eosio.code"
+        },
+        "weight": 1
+      }
+    ]
+  }
