@@ -538,22 +538,28 @@ ACTION bankcdp::liquify( name bidder, name owner, symbol_code symbl, asset bidam
             cdpstable.modify( cdps_it, same_payer, [&]( auto& p ) {  
                p.collateral = -cdps_it.stablecoin;
                if ( cdps_it.stablecoin.symbol == IQ_SYMBOL )
-                  p.stablecoin = asset( -( cdps_it.stablecoin.amount * feeds_it_iq.price.amount ), 
-                                        feeds_it_iq.price.symbol 
-                                      );
-               else p.stablecoin = asset( -( cdps_it.stablecoin.amount * 1000 / feeds_it_iq.price.amount ), 
-                                          IQ_SYMBOL 
-                                        );
+                  p.stablecoin = asset( -( cdps_it.stablecoin.amount * feeds_it_iq.price.amount ), feeds_it_iq.price.symbol );
+               else p.stablecoin = asset( -( cdps_it.stablecoin.amount * 1000 / feeds_it_iq.price.amount ), IQ_SYMBOL );
             });
-         eosio_assert( bidamt.symbol == cdps_it.stablecoin.symbol, 
-                       "bid is of wrong symbol" 
-                     );
+
+         // Make sure the bid has the correct symbol
+         eosio_assert( bidamt.symbol == cdps_it.stablecoin.symbol, "Bid is of wrong symbol" );
+
+         // Subtract the bid from the bidder
          sub_balance( bidder, bidamt );
-         const auto& feeds_it_three = feedstable.get( bidamt.symbol.code().raw(), "No price data" );
-         feedstable.modify( feeds_it_three, same_payer, [&]( auto& f ) 
+
+         // Get the price of the stablecoin
+         const auto& feeds_it_stablecoin = feedstable.get( bidamt.symbol.code().raw(), "No price data" );
+
+         // Update the feed table
+         feedstable.modify( feeds_it_stablecoin, same_payer, [&]( auto& f ) 
          {  f.total -= bidamt; });
+
+         // Lower the amount of stablecoins in the CDP
          cdpstable.modify( cdps_it, bidder, [&]( auto& p ) 
          {  p.stablecoin -= bidamt; });
+
+         // Update the bid in the bids table
          bidstable.modify( bids_it, bidder, [&]( auto& b ) { 
             b.bidder = bidder;
             b.bidamt = bidamt;
@@ -562,7 +568,10 @@ ACTION bankcdp::liquify( name bidder, name owner, symbol_code symbl, asset bidam
          });
       }
    } 
+
+   // If there is no more stablecoin owed in the CDP, close it out and give the bidder the remaining collateral
    if ( cdps_it.stablecoin.amount == 0 ) {
+      // If there is any more collateral left, give it to the bidder
       if ( cdps_it.collateral.amount ) {
          name contract = _self;
          if ( cdps_it.collateral.symbol == IQ_SYMBOL )
@@ -570,13 +579,19 @@ ACTION bankcdp::liquify( name bidder, name owner, symbol_code symbl, asset bidam
          else if ( cdps_it.collateral.symbol == stats_it.total_collateral.quantity.symbol )
             contract = stats_it.total_collateral.contract;
          add_balance( bids_it->bidder, cdps_it.collateral, contract );
-         const auto& feeds_it_collateral = feedstable.get( cdps_it.collateral.symbol.code().raw(), 
-                                          "Feed does not exist" 
-                                        );
+
+         // Get the current price of the collateral
+         const auto& feeds_it_collateral = feedstable.get( cdps_it.collateral.symbol.code().raw(), "Feed does not exist" );
+
+         // Update the feeds table by adding the collateral amount
          feedstable.modify( feeds_it_collateral, same_payer, [&]( auto& f ) 
          {  f.total += cdps_it.collateral; });
       }
+
+      // Remove the bid
       bidstable.erase( bids_it );
+
+      // Remove the CDP
       cdpstable.erase( cdps_it );
    }
 }
