@@ -15,16 +15,16 @@ liquidation auctions, stability fees, and governance are handled. Nonetheless, t
 
 To provide for better liquidity, Maker uses simultaneous (parallel) auctions of four types:
 
-* #1 Dai (stable token) bids for collateral
-* #2 Reverse dutch of the above (collateral bids for Dai) in the event of some collateral remaining to be refunded to a CDP owner.
-* #3 Dai bids for MKR (voting token) in the event of balance shortage in #1 (not enough Dai was raised)
-* #4 MKR bids for Dai in the event of balance surplus in #1 (too much Dai was raised) 
+* #1 Stablecoin (stable token) bids for collateral
+* #2 Reverse dutch of the above (collateral bids for stablecoin) in the event of some collateral remaining to be refunded to a CDP owner.
+* #3 Stablecoin bids for MKR (voting token) in the event of balance shortage in #1 (not enough stablecoin was raised)
+* #4 MKR bids for stablecoin in the event of balance surplus in #1 (too much stablecoin was raised) 
 
 Auction #2 is omitted entirely from our protocol: we do not endorse it because CDP owners should be playing it safe and overcollateralizing even more. The rest of the phases are executed in sequence rather than in parallel. 
 
 Unlike in Ethereum where the primary constraint is speed and gas, with faster block times the main constraint in EOS is RAM so our approach was taken from the angle of a more space efficient implementation, and a simpler view of the computation overall. 
 
-On that last note, we also omit the calculation of stability fees on a global basis as in multi-collateral Dai (whenever debt is being taken on or repaid, the fee is minted into the contract's balance and incremented onto a CDP's debt), in favor of an APR-based deduction in VTO upon every wipe action executed on a CDP (closer to single-collateral Dai). Moreover, our voting and referendum procedure has a very common sense nature:
+On that last note, we also omit the calculation of stability fees on a global basis as in multi-collateral stablecoin (whenever debt is being taken on or repaid, the fee is minted into the contract's balance and incremented onto a CDP's debt), in favor of an APR-based deduction in VTO upon every wipe action executed on a CDP (closer to single-collateral stablecoin). Moreover, our voting and referendum procedure has a very common sense nature:
 
 Any account may create a proposal, and as many varying proposals as desired, but we do constrain proposals per CDP type. Only one proposal may be active (in voting) per CDP type (new or modification of existing).
 

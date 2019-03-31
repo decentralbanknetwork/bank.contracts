@@ -12,13 +12,13 @@
 
 using namespace eosio;      
 
-// ACTION bank.cdp::give( name giver, name taker, symbol_code symbl )
+// ACTION bankcdp::give( name giver, name taker, symbol_code symbl )
 // {  require_auth( giver ); 
 //    is_account( taker );
 //    eosio_assert( symbl.is_valid(), "Invalid symbol name" );
    
 //    stats stable( _self, _self.value );
-//    const auto& st = stable.get( symbl.raw(), 
+//    const auto& stats_it = stable.get( symbl.raw(), 
 //                                     "CDP type does not exist" 
 //                                   );
 //    cdps cdpstable( _self, symbl.raw() );
@@ -41,7 +41,7 @@ using namespace eosio;
 // }
 
 // Start a new CDP
-ACTION bank.cdp::open( name owner, symbol_code symbl, name ram_payer )
+ACTION bankcdp::open( name owner, symbol_code symbl, name ram_payer )
 {  
    // Make sure the RAM payer is authenticated
    require_auth( ram_payer );
@@ -51,15 +51,15 @@ ACTION bank.cdp::open( name owner, symbol_code symbl, name ram_payer )
 
    // Get the stats for the stablecoin
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
 
    // Make sure the CDP is live and not in global settlement
-   eosio_assert( st.live, "CDP type not yet live, or in global settlement" );
+   eosio_assert( stats_it.live, "CDP type not yet live, or in global settlement" );
 
    // Make sure the price feed exists and has fresh data
    feeds feedstable( _self, _self.value );
-   const auto& fc = feedstable.get( st.total_collateral.quantity.symbol.code().raw(), "collateral Feed does not exist" );
-   eosio_assert( fc.stamp >= now() - FEED_FRESH, "Collateral price feed data too stale" );
+   const auto& feeds_it_collateral = feedstable.get( stats_it.total_collateral.quantity.symbol.code().raw(), "collateral Feed does not exist" );
+   eosio_assert( feeds_it_collateral.stamp >= now() - FEED_FRESH, "Collateral price feed data too stale" );
 
    // If the owner already has a CDP, they cannot create another one
    cdps cdpstable( _self, symbl.raw() );
@@ -69,13 +69,13 @@ ACTION bank.cdp::open( name owner, symbol_code symbl, name ram_payer )
    cdpstable.emplace( ram_payer, [&]( auto& p ) {
       p.owner = owner;
       p.created = now();
-      p.collateral = asset( 0, st.total_collateral.quantity.symbol );
-      p.stablecoin = asset( 0, st.total_stablecoin.symbol );
+      p.collateral = asset( 0, stats_it.total_collateral.quantity.symbol );
+      p.stablecoin = asset( 0, stats_it.total_stablecoin.symbol );
    }); 
 }
 
 // Reclaim some collateral from an overcollateralized CDP
-ACTION bank.cdp::bail( name owner, symbol_code symbl, asset quantity )
+ACTION bankcdp::bail( name owner, symbol_code symbl, asset quantity )
 {  
    // Make sure the owner is authenticated
    require_auth(owner);
@@ -87,45 +87,45 @@ ACTION bank.cdp::bail( name owner, symbol_code symbl, asset quantity )
    
    // Get the stats for the stablecoin and validate
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
-   eosio_assert( quantity.symbol == st.total_collateral.quantity.symbol, "(CDP type, collateral symbol) mismatch" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
+   eosio_assert( quantity.symbol == stats_it.total_collateral.quantity.symbol, "(CDP type, collateral symbol) mismatch" );
 
    // Fetch the CDP, validate the owner, and make sure it is not being liquidated
    cdps cdpstable( _self, symbl.raw() );
-   const auto& cdp_it = cdpstable.get( owner.value, "(CDP type, owner) mismatch" );
-   eosio_assert( cdp_it.live, "CDP is in liquidation" );
+   const auto& cdps_it = cdpstable.get( owner.value, "(CDP type, owner) mismatch" );
+   eosio_assert( cdps_it.live, "CDP is in liquidation" );
 
    // Verify the person is not trying to free too much collateral
-   eosio_assert( cdp_it.collateral > quantity, "Can't free this much collateral, try shut?" );
+   eosio_assert( cdps_it.collateral > quantity, "Can't free this much collateral, try shut?" );
 
    // Check that the price feed exists and is not stale
    feeds feedstable( _self, _self.value );
-   const auto& fc = feedstable.get( quantity.symbol.code().raw(), "Feed does not exist" );
-   eosio_assert( fc.stamp >= now() - FEED_FRESH || !st.live, "Collateral price feed data too stale" ); 
+   const auto& feeds_it_collateral = feedstable.get( quantity.symbol.code().raw(), "Feed does not exist" );
+   eosio_assert( feeds_it_collateral.stamp >= now() - FEED_FRESH || !stats_it.live, "Collateral price feed data too stale" ); 
 
    // Affirm that the amount being bailed does not cause the CDP to fall below the liquidation ratio
-   uint64_t amt = st.liquid8_ratio;
-   if ( cdp_it.stablecoin.amount ) // just safety against divide by 0
-      amt = ( fc.price.amount * 100 / cdp_it.stablecoin.amount ) *
-            ( cdp_it.collateral.amount - quantity.amount ) / 10000;
-   eosio_assert( amt >= st.liquid8_ratio, "Can't go below liquidation ratio" );
-   add_balance( owner, quantity, st.total_collateral.contract );
+   uint64_t amt = stats_it.liquid8_ratio;
+   if ( cdps_it.stablecoin.amount ) // just safety against divide by 0
+      amt = ( feeds_it_collateral.price.amount * 100 / cdps_it.stablecoin.amount ) *
+            ( cdps_it.collateral.amount - quantity.amount ) / 10000;
+   eosio_assert( amt >= stats_it.liquid8_ratio, "Can't go below liquidation ratio" );
+   add_balance( owner, quantity, stats_it.total_collateral.contract );
    
    // Update the collateral amount for this specific CDP
-   cdpstable.modify( cdp_it, owner, [&]( auto& p ) 
+   cdpstable.modify( cdps_it, owner, [&]( auto& p ) 
    {  p.collateral -= quantity; });
 
    // Update the total amount of collateral locked up by CDPs of this type
-   stable.modify( st, same_payer,  [&]( auto& t ) 
+   stable.modify( stats_it, same_payer,  [&]( auto& t ) 
    {  t.total_collateral.quantity -= quantity; });
 
    // Update the total amount of collateral in circulation globally 
-   feedstable.modify( fc, same_payer, [&]( auto& f ) 
+   feedstable.modify( feeds_it_collateral, same_payer, [&]( auto& f ) 
    {  f.total += quantity; });
 }
 
 // Issue fresh stablecoin from this CDP
-ACTION bank.cdp::draw( name owner, symbol_code symbl, asset quantity )
+ACTION bankcdp::draw( name owner, symbol_code symbl, asset quantity )
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
@@ -137,53 +137,53 @@ ACTION bank.cdp::draw( name owner, symbol_code symbl, asset quantity )
 
    // Get the stats for the stablecoin
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
 
    // Make sure the CDP is live and not in global settlement
-   eosio_assert( quantity.symbol == st.total_stablecoin.symbol, "(CDP type, stablecoin symbol) mismatch" );
-   eosio_assert( st.live, "CDP type not yet live, or in global settlement" );
+   eosio_assert( quantity.symbol == stats_it.total_stablecoin.symbol, "(CDP type, stablecoin symbol) mismatch" );
+   eosio_assert( stats_it.live, "CDP type not yet live, or in global settlement" );
 
    // Fetch the CDP, validate the owner, and make sure it is not being liquidated
    cdps cdpstable( _self, symbl.raw() );
-   const auto& cdp_it = cdpstable.get( owner.value, "(CDP type, owner) mismatch");
-   eosio_assert( cdp_it.live, "CDP is in liquidation" );
+   const auto& cdps_it = cdpstable.get( owner.value, "(CDP type, owner) mismatch");
+   eosio_assert( cdps_it.live, "CDP is in liquidation" );
    
    // Increase the stablecoin amount in the CDP
-   uint64_t amt = cdp_it.stablecoin.amount + quantity.amount;
+   uint64_t amt = cdps_it.stablecoin.amount + quantity.amount;
 
    // Increase the stablecoin amount in the global stats
-   uint64_t gmt = st.total_stablecoin.amount + quantity.amount; 
+   uint64_t gmt = stats_it.total_stablecoin.amount + quantity.amount; 
 
    // Verify that too much stablecoin is not being drawn, both at the global level and the CDP level
-   eosio_assert( st.debt_ceiling >= amt, "Can't reach the debt ceiling" );
-   eosio_assert( st.global_ceil >= gmt, "Can't reach the global debt ceiling" );
+   eosio_assert( stats_it.debt_ceiling >= amt, "Can't reach the debt ceiling" );
+   eosio_assert( stats_it.global_ceil >= gmt, "Can't reach the global debt ceiling" );
 
    // Make sure the price feed exists and has fresh data
    feeds feedstable( _self, _self.value );
-   const auto& fc = feedstable.get( cdp_it.collateral.symbol.code().raw(), "Feed does not exist" );
-   eosio_assert( fc.stamp >= now() - FEED_FRESH, "Collateral price feed data too stale" ); 
+   const auto& feeds_it_collateral = feedstable.get( cdps_it.collateral.symbol.code().raw(), "Feed does not exist" );
+   eosio_assert( feeds_it_collateral.stamp >= now() - FEED_FRESH, "Collateral price feed data too stale" ); 
    
    // Assure that the draw does not cause the CDP to go below the liquidation ratio
-   uint64_t liq = ( fc.price.amount * 100 / amt ) * ( cdp_it.collateral.amount ) / 10000;
-   eosio_assert( liq >= st.liquid8_ratio, "Can't go below liquidation ratio" );
-   const auto& fs = feedstable.get( quantity.symbol.code().raw(), "Feed does not exist" );
+   uint64_t liq = ( feeds_it_collateral.price.amount * 100 / amt ) * ( cdps_it.collateral.amount ) / 10000;
+   eosio_assert( liq >= stats_it.liquid8_ratio, "Can't go below liquidation ratio" );
+   const auto& feeds_it_stablecoin = feedstable.get( quantity.symbol.code().raw(), "Feed does not exist" );
 
    // Increase owner's stablecoin balance
    add_balance( owner, quantity, _self ); 
-   cdpstable.modify( it, same_payer, [&]( auto& p ) 
+   cdpstable.modify( cdps_it, same_payer, [&]( auto& p ) 
    {  p.stablecoin += quantity; });
 
    // Update amount of stablecoin in circulation for this CDP type
-   stable.modify( st, same_payer,  [&]( auto& t ) 
+   stable.modify( stats_it, same_payer,  [&]( auto& t ) 
    {  t.total_stablecoin += quantity; });
 
    // Update amount of this stablecoin in circulation globally 
-   feedstable.modify( fs, same_payer, [&]( auto& f ) 
+   feedstable.modify( feeds_it_stablecoin, same_payer, [&]( auto& f ) 
    {  f.total += quantity; });
 }
 
 // Reduce the stablecoin balance by relinquishing some to the CDP
-ACTION bank.cdp::wipe( name owner, symbol_code symbl, asset quantity ) 
+ACTION bankcdp::wipe( name owner, symbol_code symbl, asset quantity ) 
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
@@ -198,24 +198,23 @@ ACTION bank.cdp::wipe( name owner, symbol_code symbl, asset quantity )
 
    // Make sure the price feed exists and has fresh data
    feeds feedstable(_self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
-   eosio_assert( quantity.symbol == st.total_stablecoin.symbol, "(CDP type, symbol) mismatch" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
+   eosio_assert( quantity.symbol == stats_it.total_stablecoin.symbol, "(CDP type, symbol) mismatch" );
 
    // Fetch the CDP, validate the owner, and make sure it is not being liquidated
    cdps cdpstable( _self, symbl.raw() );
-   const auto& cdp_it = cdpstable.get( owner.value, "(CDP type, owner) mismatch" ); 
-   eosio_assert( cdp_it.live, "CDP in liquidation" );
+   const auto& cdps_it = cdpstable.get( owner.value, "(CDP type, owner) mismatch" ); 
+   eosio_assert( cdps_it.live, "CDP in liquidation" );
 
    // Make sure that you are not trying to wipe more stablecoin than is available in for the CDP
-   eosio_assert( cdp_it.stablecoin > quantity, "Can't wipe this much, try shut?" ); 
+   eosio_assert( cdps_it.stablecoin > quantity, "Can't wipe this much, try shut?" ); 
 
    // Get the price feed
-   const auto& fv = feedstable.get( IQ_SYMBOL.code().raw(), "No price data" );
+   const auto& feeds_it = feedstable.get( IQ_SYMBOL.code().raw(), "No price data" );
 
    // Calculate the stability fee and create the asset object
-   uint64_t apr = 1000000 * st.stability_fee * 
-                  ( now() - cdp_it.created ) / SECYR *
-                  ( quantity.amount * 100 / fv.price.amount ) / 100000;
+   uint64_t apr = 1000000 * stats_it.stability_fee * ( now() - cdps_it.created ) / SECYR *
+                  ( quantity.amount * 100 / feeds_it.price.amount ) / 100000;
    asset fee = asset( apr, IQ_SYMBOL );
 
    // Have the CDP owner pay the stability fee
@@ -227,25 +226,25 @@ ACTION bank.cdp::wipe( name owner, symbol_code symbl, asset quantity )
    sub_balance( owner, quantity );
 
    // Update the global fee and outstanding stablecoin amounts 
-   stable.modify( st, same_payer,  [&]( auto& t ) { 
+   stable.modify( stats_it, same_payer,  [&]( auto& t ) { 
       t.fee_balance += fee; //just to keep track
       t.total_stablecoin -= quantity;
    });
 
    // Lower the amount of stablecoins in the CDP
-   cdpstable.modify( it, same_payer, [&]( auto& p ) 
+   cdpstable.modify( cdps_it, same_payer, [&]( auto& p ) 
    {  p.stablecoin -= quantity; });
 
    // Get the price feed
-   const auto& fs = feedstable.get( quantity.symbol.code().raw(), "No price data" );
+   const auto& feeds_it_stablecoin = feedstable.get( quantity.symbol.code().raw(), "No price data" );
 
    // Update amount of this stablecoin in circulation globally 
-   feedstable.modify( fs, same_payer, [&]( auto& f ) 
+   feedstable.modify( feeds_it_stablecoin, same_payer, [&]( auto& f ) 
    {  f.total -= quantity; });
 }
 
 // Add more collateral to the CDP
-ACTION bank.cdp::lock( name owner, symbol_code symbl, asset quantity ) 
+ACTION bankcdp::lock( name owner, symbol_code symbl, asset quantity ) 
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
@@ -257,37 +256,36 @@ ACTION bank.cdp::lock( name owner, symbol_code symbl, asset quantity )
 
    // Get the stats for the stablecoin and validate
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
-   eosio_assert( st.live, "CDP type not yet live, or in global settlement" );
-   eosio_assert( st.total_collateral.quantity.symbol == quantity.symbol, "(CDP type, collateral symbol) mismatch" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
+   eosio_assert( stats_it.live, "CDP type not yet live, or in global settlement" );
+   eosio_assert( stats_it.total_collateral.quantity.symbol == quantity.symbol, "(CDP type, collateral symbol) mismatch" );
 
    // Fetch the CDP, validate the owner, and make sure it is not being liquidated
    cdps cdpstable( _self, symbl.raw() );
-   const auto& cdp_it = cdpstable.get( owner.value, "This CDP does not exist" );
-   eosio_assert( cdp_it.live, "CDP in liquidation" );
+   const auto& cdps_it = cdpstable.get( owner.value, "This CDP does not exist" );
+   eosio_assert( cdps_it.live, "CDP in liquidation" );
 
    // Subtract the collateral from the owner and make sure the token isn't an identically-named copy from a fake contract
    name contract = sub_balance( owner, quantity );
-   eosio_assert( st.total_collateral.contract == contract, "No using tokens from fake contracts" );
+   eosio_assert( stats_it.total_collateral.contract == contract, "No using tokens from fake contracts" );
 
    // Update amount of collateral in circulation for this CDP type
-   stable.modify( st, same_payer,  [&]( auto& t ) 
+   stable.modify( stats_it, same_payer,  [&]( auto& t ) 
    {  t.total_collateral.quantity += quantity; });
 
    // Update amount of collateral in circulation for this CDP type
-   cdpstable.modify( it, same_payer, [&]( auto& p ) 
+   cdpstable.modify( cdps_it, same_payer, [&]( auto& p ) 
    {  p.collateral += quantity; });
    feeds feedstable(_self, _self.value );
-   const auto& fc = feedstable.get( quantity.symbol.code().raw(), 
-                                    "no price data" 
-                                  );
+   const auto& feeds_it = feedstable.get( quantity.symbol.code().raw(), "No price data" );
+
    //update amount of this collateral in circulation globally
-   feedstable.modify( fc, same_payer, [&]( auto& f ) 
+   feedstable.modify( feeds_it, same_payer, [&]( auto& f ) 
    {  f.total -= quantity; });
 }
 
-// Close out the CDP by paying off the required DAI plus the stability fee
-ACTION bank.cdp::shut( name owner, symbol_code symbl ) 
+// Close out the CDP by paying off the required stablecoin plus the stability fee. Give the collateral back to the owner.
+ACTION bankcdp::shut( name owner, symbol_code symbl ) 
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
@@ -297,34 +295,39 @@ ACTION bank.cdp::shut( name owner, symbol_code symbl )
 
    // Get the stats for the stablecoin and validate
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
 
    // Fetch the CDP, validate the owner, and make sure it is not being liquidated
    cdps cdpstable( _self, symbl.raw() );
-   const auto& cdp_it = cdpstable.get( owner.value, "This CDP does not exist" );
-   eosio_assert( cdp_it.live, "CDP in liquidation" );
+   const auto& cdps_it = cdpstable.get( owner.value, "This CDP does not exist" );
+   eosio_assert( cdps_it.live, "CDP in liquidation" );
    
-   asset new_total_stabl = st.total_stablecoin;
-   if (cdp_it.stablecoin.amount > 0) {
-      sub_balance( owner, cdp_it.stablecoin ); 
-      new_total_stabl -= cdp_it.stablecoin;
+   // Remove the stablecoin from the owner and calculate the new total stablecoin in circulation
+   asset new_total_stabl = stats_it.total_stablecoin;
+   if (cdps_it.stablecoin.amount > 0) {
+      sub_balance( owner, cdps_it.stablecoin ); 
+      new_total_stabl -= cdps_it.stablecoin;
    }
-   asset new_total_clatrl = st.total_collateral.quantity;
-   if ( cdp_it.collateral.amount > 0 ) {
-      add_balance( owner, cdp_it.collateral, 
-                   st.total_collateral.contract 
-                 );
-      new_total_clatrl += cdp_it.collateral;
+
+   // Give the collateral back to the owner and calculate the new total collateral locked up
+   asset new_total_clatrl = stats_it.total_collateral.quantity;
+   if ( cdps_it.collateral.amount > 0 ) {
+      add_balance( owner, cdps_it.collateral, stats_it.total_collateral.contract );
+      new_total_clatrl -= cdps_it.collateral;
    }
-   stable.modify( st, same_payer, [&]( auto& t ) { 
+
+   // Update the stablecoin and collateral stats
+   stable.modify( stats_it, same_payer, [&]( auto& t ) { 
       t.total_stablecoin = new_total_stabl;
       t.total_collateral.quantity = new_total_clatrl; 
    });
-   cdpstable.erase( cdp_it );
+
+   // Remove the CDP contract entr y for this owner
+   cdpstable.erase( cdps_it );
 }
 
 // Global settlement
-ACTION bank.cdp::settle( name feeder, symbol_code symbl ) 
+ACTION bankcdp::settle( name feeder, symbol_code symbl ) 
 {  
    // Make sure the feeder is authenticated
    require_auth( feeder );
@@ -334,25 +337,25 @@ ACTION bank.cdp::settle( name feeder, symbol_code symbl )
    
    // Get the stats for the stablecoin and validate
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
-   eosio_assert( st.total_stablecoin.amount > 0 && st.live, "CDP type already settled, or has 0 debt" );
-   eosio_assert( st.feeder == feeder, "Only feeder can trigger global settlement" ); 
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
+   eosio_assert( stats_it.total_stablecoin.amount > 0 && stats_it.live, "CDP type already settled, or has 0 debt" );
+   eosio_assert( stats_it.feeder == feeder, "Only feeder can trigger global settlement" ); 
 
    // Make sure the price feed exists and has fresh data
    feeds feedstable( _self, _self.value );
-   const auto& fc = feedstable.get( st.total_collateral.quantity.symbol.code().raw(), "No price data" );
+   const auto& feeds_it_collateral = feedstable.get( stats_it.total_collateral.quantity.symbol.code().raw(), "No price data" );
    
    // Make sure there is no liquidation hazard
-   uint64_t liq = ( fc.price.amount * 100 * st.total_collateral.quantity.amount ) / ( st.total_stablecoin.amount * 10000 );    
-   eosio_assert( st.liquid8_ratio >= liq, "No liquidation hazard for settlement" );  
+   uint64_t liq = ( feeds_it_collateral.price.amount * 100 * stats_it.total_collateral.quantity.amount ) / ( stats_it.total_stablecoin.amount * 10000 );    
+   eosio_assert( stats_it.liquid8_ratio >= liq, "No liquidation hazard for settlement" );  
    
    // Set the stablecoin status as not live                                
-   stable.modify( st, same_payer, [&]( auto& t ) 
+   stable.modify( stats_it, same_payer, [&]( auto& t ) 
    {  t.live = false; });
 }
 
 // Vote for or against a CDP proposal
-ACTION bank.cdp::vote( name voter, symbol_code symbl, bool against, asset quantity ) 
+ACTION bankcdp::vote( name voter, symbol_code symbl, bool against, asset quantity ) 
 {  
    // Make sure the voter is authenticated
    require_auth( voter );
@@ -364,15 +367,15 @@ ACTION bank.cdp::vote( name voter, symbol_code symbl, bool against, asset quanti
 
    // Get the proposal for the symbl-denominated CDP
    props propstable( _self, _self.value );
-   const auto& pt = propstable.get( symbl.raw(), "CDP type not proposed" );
+   const auto& props_it = propstable.get( symbl.raw(), "CDP type not proposed" );
 
    // Lower the voter's IQ balance
    sub_balance( voter, quantity );
 
    // This is used to keep track of which voters voted for what CDP symbol proposals and how much IQ they used to do so
    accounts acnts( _self, symbl.raw() );  
-   auto at = acnts.find( voter.value );
-   if ( at == acnts.end() )
+   auto accounts_it = acnts.find( voter.value );
+   if ( accounts_it == acnts.end() )
       acnts.emplace( voter, [&]( auto& a ) {
          //we know the symbol is IQ anyway
          //so instead keep track of prop symbol
@@ -380,20 +383,20 @@ ACTION bank.cdp::vote( name voter, symbol_code symbl, bool against, asset quanti
          a.balance = asset( quantity.amount, symbol( symbl, 3 ) ); 
       });
    else
-      acnts.modify( at, same_payer, [&]( auto& a ) 
+      acnts.modify( accounts_it, same_payer, [&]( auto& a ) 
       {  a.balance += asset( quantity.amount, symbol( symbl, 3 ) ); });
 
    // Keep track of the vote quantity by updating the propstable.
    if (against)
-      propstable.modify( pt, same_payer, [&]( auto& p ) 
+      propstable.modify( props_it, same_payer, [&]( auto& p ) 
       {  p.nay += quantity; });
    else
-      propstable.modify( pt, same_payer, [&]( auto& p ) 
+      propstable.modify( props_it, same_payer, [&]( auto& p ) 
       {  p.yay += quantity; });
 }
 
-// Sell off some collateral if the market moves against it. Similar to a margin call.
-ACTION bank.cdp::liquify( name bidder, name owner, symbol_code symbl, asset bidamt ) 
+// Sell off some collateral for IQ if the market moves against the former. Similar to a margin call.
+ACTION bankcdp::liquify( name bidder, name owner, symbol_code symbl, asset bidamt ) 
 {  
    // Make sure the bidder is authenticated
    require_auth( bidder );
@@ -404,7 +407,7 @@ ACTION bank.cdp::liquify( name bidder, name owner, symbol_code symbl, asset bida
 
    // Get the stats for the stablecoin and validate
    stats stable( _self, _self.value );
-   const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
+   const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
 
    // Fetch the CDP
    cdps cdpstable( _self, symbl.raw() );
@@ -413,42 +416,42 @@ ACTION bank.cdp::liquify( name bidder, name owner, symbol_code symbl, asset bida
    feeds feedstable( _self, _self.value );
 
    // Verify that the CDP exists
-   const auto& cdp_it = cdpstable.get( owner.value, "This CDP does not exist" );
+   const auto& cdps_it = cdpstable.get( owner.value, "This CDP does not exist" );
 
    // Start liquidation
-   if ( cdp_it.live ) {
+   if ( cdps_it.live ) {
       // Make sure the stablecoin balance is not zero
-      eosio_assert ( cdp_it.stablecoin.amount > 0, "Can't liquify this CDP" );
+      eosio_assert ( cdps_it.stablecoin.amount > 0, "Can't liquify this CDP" );
 
       // Make sure the price feed exists and has fresh data
-      const auto& fc = feedstable.get( cdp_it.collateral.symbol.code().raw(), "No price data" );
-      eosio_assert( fc.stamp >= now() - FEED_FRESH || !st.live, "Collateral price feed data too stale" ); 
+      const auto& feeds_it_collateral = feedstable.get( cdps_it.collateral.symbol.code().raw(), "No price data" );
+      eosio_assert( feeds_it_collateral.stamp >= now() - FEED_FRESH || !stats_it.live, "Collateral price feed data too stale" ); 
 
       // Assert that the liquidation keeps the liquidation ratio for that CDP market in line
-      uint64_t liq = ( fc.price.amount * 100 / cdp_it.stablecoin.amount ) * ( cdp_it.collateral.amount ) / 10000;
-      eosio_assert( st.liquid8_ratio > liq, "Must exceed liquidation ratio" );
+      uint64_t liq = ( feeds_it_collateral.price.amount * 100 / cdps_it.stablecoin.amount ) * ( cdps_it.collateral.amount ) / 10000;
+      eosio_assert( stats_it.liquid8_ratio > liq, "Must exceed liquidation ratio" );
 
       // Update the CDP contract for that bidder
-      cdpstable.modify( it, bidder, [&]( auto& p ) { // liquidators get the RAM
+      cdpstable.modify( cdps_it, bidder, [&]( auto& p ) { // liquidators get the RAM
          p.live = false; 
-         p.stablecoin.amount += ( p.stablecoin.amount * st.penalty_ratio ) / 100;
+         p.stablecoin.amount += ( p.stablecoin.amount * stats_it.penalty_ratio ) / 100;
       });
    } 
 
    // Get the list of bids for that currency, from that owner
    bids bidstable( _self, symbl.raw() );
-   auto bt = bidstable.find( owner.value );
+   auto bids_it = bidstable.find( owner.value );
 
    // If there are no bids, create one
-   if ( bt == bidstable.end() ) {
+   if ( bids_it == bidstable.end() ) {
       // Make sure the symbol in the bid matches the stablecoin symbol
-      eosio_assert( bidamt.symbol == cdp_it.stablecoin.symbol, "Bid is of wrong symbol" );
+      eosio_assert( bidamt.symbol == cdps_it.stablecoin.symbol, "Bid is of wrong symbol" );
 
       // Subtract the bid amount (in stablecoin) from the bidder
       sub_balance( bidder, bidamt );
 
       // Adjust the CDP stablecoin total
-      cdpstable.modify( it, bidder, [&]( auto& p ) 
+      cdpstable.modify( cdps_it, bidder, [&]( auto& p ) 
       {  p.stablecoin -= bidamt; });
 
       // Create a bid on the bids table
@@ -461,93 +464,97 @@ ACTION bank.cdp::liquify( name bidder, name owner, symbol_code symbl, asset bida
       }); 
    } 
    // Otherwise, modify an existing one, as long as an auction is currently ongoing
-   else if ( st.ttl > ( now() - bt->lastbid ) && st.tau > ( now() - bt->started ) ) {
+   else if ( stats_it.ttl > ( now() - bids_it->lastbid ) && stats_it.tau > ( now() - bids_it->started ) ) {
       // Make sure the symbol in the bid matches the stablecoin symbol
-      eosio_assert( bidamt.symbol == cdp_it.stablecoin.symbol, "Bid is of wrong symbol" ); name contract = _self;
+      eosio_assert( bidamt.symbol == cdps_it.stablecoin.symbol, "Bid is of wrong symbol" ); name contract = _self;
 
       // Verify that the minimum bid amount is enough
-      uint64_t min = bt->bidamt.amount + ( bt->bidamt.amount * st.beg / 100 );
+      uint64_t min = bids_it->bidamt.amount + ( bids_it->bidamt.amount * stats_it.beg / 100 );
       eosio_assert( bidamt.amount >= min, "Bid too small" ); 
 
       // Make sure the stablecoin is IQ
-      if ( cdp_it.stablecoin.symbol == IQ_SYMBOL )     
+      if ( cdps_it.stablecoin.symbol == IQ_SYMBOL )     
          contract = IQ_NAME;      
 
       // Balance out the bid amount and the contract amount
       sub_balance( bidder, bidamt );
-      add_balance( bt->bidder, bt->bidamt, contract ); 
+      add_balance( bids_it->bidder, bids_it->bidamt, contract ); 
 
       // Subtract difference between bids CDP balance
-      cdpstable.modify( it, bidder, [&]( auto& p ) 
-      {  p.stablecoin -= ( bidamt - bt->bidamt ); }); 
+      cdpstable.modify( cdps_it, bidder, [&]( auto& p ) 
+      {  p.stablecoin -= ( bidamt - bids_it->bidamt ); }); 
 
       // Update the bids table
-      bidstable.modify( bt, bidder, [&]( auto& b ) { 
+      bidstable.modify( bids_it, bidder, [&]( auto& b ) { 
          b.bidder = bidder;
          b.bidamt = bidamt;
          b.lastbid = now();
       });   
+   // TODO: NEED DESCRIPTION HERE
    } else {
-      if ( cdp_it.collateral.amount ) {
-         cdpstable.modify( it, same_payer, [&]( auto& p )
+      // Make sure there is some collateral
+      if ( cdps_it.collateral.amount ) {
+         // Reduce the amount of collateral in the CDP
+         cdpstable.modify( cdps_it, same_payer, [&]( auto& p )
          {  p.collateral -= p.collateral; });
-         const auto& fc = feedstable.get( cdp_it.collateral.symbol.code().raw(), 
-                                          "Feed does not exist" 
-                                        ); name contract = _self;
-         //update amount of this collateral in circulation globally
-         feedstable.modify( fc, same_payer, [&]( auto& f ) 
-         {  f.total += cdp_it.collateral; });
-         if ( cdp_it.collateral.symbol == IQ_SYMBOL )
+
+         // Make sure the price feed exists
+         const auto& feeds_it_collateral = feedstable.get( cdps_it.collateral.symbol.code().raw(), "Feed does not exist" ); 
+         name contract = _self;
+
+         // Update amount of this collateral in circulation globally
+         feedstable.modify( feeds_it_collateral, same_payer, [&]( auto& f ) 
+         {  f.total += cdps_it.collateral; });
+         if ( cdps_it.collateral.symbol == IQ_SYMBOL )
             contract = IQ_NAME;
-         //update amount of collateral locked up by cdps of type
-         else if ( st.total_collateral.quantity.symbol == cdp_it.collateral.symbol ) {
-            stable.modify( st, same_payer,  [&]( auto& t ) 
-            {  t.total_collateral.quantity -= cdp_it.collateral; });
-            contract = st.total_collateral.contract;
+
+         // Update amount of collateral locked up by CDPs of type
+         else if ( stats_it.total_collateral.quantity.symbol == cdps_it.collateral.symbol ) {
+            stable.modify( stats_it, same_payer,  [&]( auto& t ) 
+            {  t.total_collateral.quantity -= cdps_it.collateral; });
+            contract = stats_it.total_collateral.contract;
          }
-         add_balance( bt->bidder, cdp_it.collateral, contract );
+
+         // Give the collateral to the bidder
+         add_balance( bids_it->bidder, cdps_it.collateral, contract );
       } 
-      if ( cdp_it.stablecoin.amount )  {
-         const auto& fv = feedstable.get( IQ_SYMBOL.code().raw(), 
-                                          "no price data" 
-                                        );
-         eosio_assert( fv.stamp >= now() - FEED_FRESH,
-                       "iq price feed data too stale"
-                     ); 
-         if ( cdp_it.stablecoin.amount > 0 )
-            cdpstable.modify( it, same_payer, [&]( auto& p ) {  
-               if ( cdp_it.stablecoin.symbol == IQ_SYMBOL )
-                  p.collateral = asset( cdp_it.stablecoin.amount * fv.price.amount, 
-                                        fv.price.symbol 
-                                      ); 
+      // Verify that the amount of stablecoin amount is not null or zero
+      if ( cdps_it.stablecoin.amount )  {
+         // Make sure the price feed exists and is not stale
+         const auto& feeds_it_iq = feedstable.get( IQ_SYMBOL.code().raw(), "No price data" );
+         eosio_assert( feeds_it_iq.stamp >= now() - FEED_FRESH, "IQ price feed data too stale" );
+
+         // Verify that the amount of stablecoin is nonzero
+         if ( cdps_it.stablecoin.amount > 0 )
+            // Update the CDP with the new collateral amount, based on the sale of the collateral for IQ
+            cdpstable.modify( cdps_it, same_payer, [&]( auto& p ) {  
+               if ( cdps_it.stablecoin.symbol == IQ_SYMBOL )
+                  p.collateral = asset( cdps_it.stablecoin.amount * feeds_it_iq.price.amount, feeds_it_iq.price.symbol ); 
                else
-                  p.collateral = asset( cdp_it.stablecoin.amount  * 1000 / fv.price.amount,
-                                        IQ_SYMBOL 
-                                      );
+                  p.collateral = asset( cdps_it.stablecoin.amount  * 1000 / feeds_it_iq.price.amount, IQ_SYMBOL );
             });   
-         else if ( cdp_it.stablecoin.amount < 0 )
-            cdpstable.modify( it, same_payer, [&]( auto& p ) {  
-               p.collateral = -it.stablecoin;
-               if ( cdp_it.stablecoin.symbol == IQ_SYMBOL )
-                  p.stablecoin = asset( -( cdp_it.stablecoin.amount * fv.price.amount ), 
-                                        fv.price.symbol 
+         // TODO: NEED DESCRIPTION HERE. Is this accounting for excess stablecoin in the CDP?
+         else if ( cdps_it.stablecoin.amount < 0 )
+            cdpstable.modify( cdps_it, same_payer, [&]( auto& p ) {  
+               p.collateral = -cdps_it.stablecoin;
+               if ( cdps_it.stablecoin.symbol == IQ_SYMBOL )
+                  p.stablecoin = asset( -( cdps_it.stablecoin.amount * feeds_it_iq.price.amount ), 
+                                        feeds_it_iq.price.symbol 
                                       );
-               else p.stablecoin = asset( -( cdp_it.stablecoin.amount * 1000 / fv.price.amount ), 
+               else p.stablecoin = asset( -( cdps_it.stablecoin.amount * 1000 / feeds_it_iq.price.amount ), 
                                           IQ_SYMBOL 
                                         );
             });
-         eosio_assert( bidamt.symbol == cdp_it.stablecoin.symbol, 
+         eosio_assert( bidamt.symbol == cdps_it.stablecoin.symbol, 
                        "bid is of wrong symbol" 
                      );
          sub_balance( bidder, bidamt );
-         const auto& fs = feedstable.get( bidamt.symbol.code().raw(), 
-                                          "no price data" 
-                                        );
-         feedstable.modify( fs, same_payer, [&]( auto& f ) 
+         const auto& feeds_it_three = feedstable.get( bidamt.symbol.code().raw(), "No price data" );
+         feedstable.modify( feeds_it_three, same_payer, [&]( auto& f ) 
          {  f.total -= bidamt; });
-         cdpstable.modify( it, bidder, [&]( auto& p ) 
+         cdpstable.modify( cdps_it, bidder, [&]( auto& p ) 
          {  p.stablecoin -= bidamt; });
-         bidstable.modify( bt, bidder, [&]( auto& b ) { 
+         bidstable.modify( bids_it, bidder, [&]( auto& b ) { 
             b.bidder = bidder;
             b.bidamt = bidamt;
             b.started = now();
@@ -555,26 +562,26 @@ ACTION bank.cdp::liquify( name bidder, name owner, symbol_code symbl, asset bida
          });
       }
    } 
-   if ( cdp_it.stablecoin.amount == 0 ) {
-      if ( cdp_it.collateral.amount ) {
+   if ( cdps_it.stablecoin.amount == 0 ) {
+      if ( cdps_it.collateral.amount ) {
          name contract = _self;
-         if ( cdp_it.collateral.symbol == IQ_SYMBOL )
+         if ( cdps_it.collateral.symbol == IQ_SYMBOL )
             contract = IQ_NAME;
-         else if ( cdp_it.collateral.symbol == st.total_collateral.quantity.symbol )
-            contract = st.total_collateral.contract;
-         add_balance( bt->bidder, cdp_it.collateral, contract );
-         const auto& fc = feedstable.get( cdp_it.collateral.symbol.code().raw(), 
+         else if ( cdps_it.collateral.symbol == stats_it.total_collateral.quantity.symbol )
+            contract = stats_it.total_collateral.contract;
+         add_balance( bids_it->bidder, cdps_it.collateral, contract );
+         const auto& feeds_it_collateral = feedstable.get( cdps_it.collateral.symbol.code().raw(), 
                                           "Feed does not exist" 
                                         );
-         feedstable.modify( fc, same_payer, [&]( auto& f ) 
-         {  f.total += cdp_it.collateral; });
+         feedstable.modify( feeds_it_collateral, same_payer, [&]( auto& f ) 
+         {  f.total += cdps_it.collateral; });
       }
-      bidstable.erase( bt );
-      cdpstable.erase( cdp_it );
+      bidstable.erase( bids_it );
+      cdpstable.erase( cdps_it );
    }
 }
 
-ACTION bank.cdp::propose( name proposer, symbol_code symbl, 
+ACTION bankcdp::propose( name proposer, symbol_code symbl, 
                               symbol clatrl, symbol_code stabl,
                               uint64_t max, uint64_t gmax, 
                               uint64_t pen, uint64_t fee,
@@ -606,8 +613,8 @@ ACTION bank.cdp::propose( name proposer, symbol_code symbl,
    eosio_assert( feedstable.find( symbl.raw() ) == feedstable.end(), "Can't propose collateral or governance symbols" ); 
    eosio_assert( feedstable.find( stabl.raw() ) != feedstable.end(), "Can't propose an unknown stablecoin symbol" );
    if ( !tau && !ttl ) { // passing 0 for ttl, tau = flip settlement
-      const auto& st = stable.get( symbl.raw(), "CDP type does not exist" );
-      eosio_assert( proposer == st.feeder, "Only priviliged accounts may propose global settlement" );
+      const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
+      eosio_assert( proposer == stats_it.feeder, "Only priviliged accounts may propose global settlement" );
    } else {
       eosio_assert( max < gmax && max > 0 &&
                     gmax <= max * 1000000 &&
@@ -652,17 +659,17 @@ ACTION bank.cdp::propose( name proposer, symbol_code symbl,
    txn.send(txid, _self); 
 }
 
-ACTION bank.cdp::referended( name proposer, symbol_code symbl ) 
+ACTION bankcdp::referended( name proposer, symbol_code symbl ) 
 {  
    // Make sure the contract is authenticated
    require_auth( _self );
    eosio_assert( symbl.is_valid(), "Invalid symbol name" );
   
    props propstable( _self, _self.value );
-   const auto& prop = propstable.get( symbl.raw(), "No such proposal" );
-   eosio_assert( now() >= prop.deadline, "Too soon to be referended" );
+   const auto& props_it = propstable.get( symbl.raw(), "No such proposal" );
+   eosio_assert( now() >= props_it.deadline, "Too soon to be referended" );
       
-   if ( prop.yay == prop.nay ) { //vote tie, so revote
+   if ( props_it.yay == props_it.nay ) { //vote tie, so revote
       transaction txn{};
       txn.actions.emplace_back(  permission_level { _self, "active"_n },
                                  _self, "referended"_n, 
@@ -672,9 +679,9 @@ ACTION bank.cdp::referended( name proposer, symbol_code symbl )
       txn.send(txid, _self); 
    } else { //the proposal was voted in for or against
       stats pstable( _self, proposer.value );
-      auto pstat = pstable.find( symbl.raw() );
-      bool settlement = ( pstat == pstable.end() );
-      if ( prop.yay > prop.nay ) { //implement proposed changes...
+      auto pstats_it = pstable.find( symbl.raw() );
+      bool settlement = ( pstats_it == pstable.end() );
+      if ( props_it.yay > props_it.nay ) { //implement proposed changes...
          stats stable( _self, _self.value );
          auto stat_exist = stable.find( symbl.raw() );
          if ( settlement )
@@ -685,49 +692,49 @@ ACTION bank.cdp::referended( name proposer, symbol_code symbl )
                stable.emplace( _self, [&]( auto& t ) {
                   t.live = true;
                   t.last_vote = now();
-                  t.tau = pstat->tau;
-                  t.ttl = pstat->ttl;
-                  t.beg = pstat->beg;
-                  t.feeder = pstat->feeder;
-                  t.cdp_type = pstat->cdp_type;
-                  t.global_ceil = pstat->global_ceil;
-                  t.debt_ceiling = pstat->debt_ceiling;
-                  t.stability_fee = pstat->stability_fee;
-                  t.penalty_ratio = pstat->penalty_ratio;
-                  t.liquid8_ratio = pstat->liquid8_ratio;
-                  t.fee_balance = pstat->fee_balance;
-                  t.total_stablecoin = pstat->total_stablecoin;
-                  t.total_collateral = pstat->total_collateral;
+                  t.tau = pstats_it->tau;
+                  t.ttl = pstats_it->ttl;
+                  t.beg = pstats_it->beg;
+                  t.feeder = pstats_it->feeder;
+                  t.cdp_type = pstats_it->cdp_type;
+                  t.global_ceil = pstats_it->global_ceil;
+                  t.debt_ceiling = pstats_it->debt_ceiling;
+                  t.stability_fee = pstats_it->stability_fee;
+                  t.penalty_ratio = pstats_it->penalty_ratio;
+                  t.liquid8_ratio = pstats_it->liquid8_ratio;
+                  t.fee_balance = pstats_it->fee_balance;
+                  t.total_stablecoin = pstats_it->total_stablecoin;
+                  t.total_collateral = pstats_it->total_collateral;
                });
             else
                stable.modify( stat_exist, same_payer, [&]( auto& t ) {
                   t.live = true;
                   t.last_vote = now();
-                  t.tau = pstat->tau;
-                  t.ttl = pstat->ttl;
-                  t.beg = pstat->beg;
-                  t.feeder = pstat->feeder;
-                  t.global_ceil = pstat->global_ceil;
-                  t.debt_ceiling = pstat->debt_ceiling;
-                  t.stability_fee = pstat->stability_fee;
-                  t.penalty_ratio = pstat->penalty_ratio;
-                  t.liquid8_ratio = pstat->liquid8_ratio;
+                  t.tau = pstats_it->tau;
+                  t.ttl = pstats_it->ttl;
+                  t.beg = pstats_it->beg;
+                  t.feeder = pstats_it->feeder;
+                  t.global_ceil = pstats_it->global_ceil;
+                  t.debt_ceiling = pstats_it->debt_ceiling;
+                  t.stability_fee = pstats_it->stability_fee;
+                  t.penalty_ratio = pstats_it->penalty_ratio;
+                  t.liquid8_ratio = pstats_it->liquid8_ratio;
                });
          }
       } //refund all voters' voting tokens
       accounts vacnts( _self, symbl.raw() );
-      auto it = vacnts.begin();
-      while ( it != vacnts.end() ) { //TODO: refactor, unsustainable loop
-         add_balance( it->owner, asset( it->balance.amount, IQ_SYMBOL ), IQ_NAME );   
-         it = vacnts.erase( it );
+      auto accounts_it = vacnts.begin();
+      while ( accounts_it != vacnts.end() ) { //TODO: refactor, unsustainable loop
+         add_balance( accounts_it->owner, asset( accounts_it->balance.amount, IQ_SYMBOL ), IQ_NAME );   
+         accounts_it = vacnts.erase( accounts_it );
       } 
       if ( !settlement ) //safely erase the proposal
-         pstable.erase( *pstat );
-      propstable.erase( prop );
+         pstable.erase( *pstats_it );
+      propstable.erase( props_it );
    }
 }
 
-ACTION bank.cdp::upfeed( name feeder, asset price, 
+ACTION bankcdp::upfeed( name feeder, asset price, 
                              symbol_code cdp_type, symbol symbl ) 
 {  
    // Make sure the feeder is authenticated
@@ -740,22 +747,22 @@ ACTION bank.cdp::upfeed( name feeder, asset price,
 
    if ( !has_auth( _self ) ) {
       stats stable( _self, _self.value );
-      const auto& st = stable.get( cdp_type.raw(), 
+      const auto& stats_it = stable.get( cdp_type.raw(), 
                                    "CDP type does not exist" 
                                  );
-      eosio_assert( st.feeder == feeder, 
+      eosio_assert( stats_it.feeder == feeder, 
                     "account not authorized to be price feeder"  
                   );
-      eosio_assert( st.total_stablecoin.symbol == price.symbol, 
+      eosio_assert( stats_it.total_stablecoin.symbol == price.symbol, 
                     "price symbol must match stablecoin symbol"
                   );
-      eosio_assert( st.total_collateral.quantity.symbol == symbl, 
+      eosio_assert( stats_it.total_collateral.quantity.symbol == symbl, 
                     "asset symbol must match collateral symbol" 
                   );
    } feeds feedstable( _self, _self.value );
-   auto ft = feedstable.find( symbl.code().raw() );
-   if ( ft != feedstable.end() )
-      feedstable.modify( ft, feeder, [&]( auto& f ) {
+   auto feeds_it = feedstable.find( symbl.code().raw() );
+   if ( feeds_it != feedstable.end() )
+      feedstable.modify( feeds_it, feeder, [&]( auto& f ) {
          f.price.amount *= (17 / 20);
          f.price.amount += (3 / 20) * price.amount;
          f.stamp = now();
@@ -768,7 +775,7 @@ ACTION bank.cdp::upfeed( name feeder, asset price,
       }); 
 }
 
-ACTION bank.cdp::deposit( name from, name to,
+ACTION bankcdp::deposit( name from, name to,
                               asset quantity, string memo ) 
 {  
    // Make sure the depositor is authenticated
@@ -785,15 +792,15 @@ ACTION bank.cdp::deposit( name from, name to,
                       );
       add_balance( from, quantity, contract );
       feeds feedstable( _self, _self.value );
-      const auto& fc = feedstable.get( quantity.symbol.code().raw(), 
+      const auto& feeds_it = feedstable.get( quantity.symbol.code().raw(), 
                                        "Feed does not exist" 
                                      );
-      feedstable.modify( fc, same_payer, [&]( auto& f ) 
+      feedstable.modify( feeds_it, same_payer, [&]( auto& f ) 
       {  f.total += quantity; });
    }
 }
 
-ACTION bank.cdp::transfer( name from, name to,
+ACTION bankcdp::transfer( name from, name to,
                                asset quantity, string memo )
 {  
    // Make sure the depositor is authenticated
@@ -808,7 +815,7 @@ ACTION bank.cdp::transfer( name from, name to,
    add_balance( to, quantity, contract);
 }
 
-ACTION bank.cdp::withdraw( name owner, asset quantity, string memo ) 
+ACTION bankcdp::withdraw( name owner, asset quantity, string memo ) 
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
@@ -821,7 +828,7 @@ ACTION bank.cdp::withdraw( name owner, asset quantity, string memo )
    eosio_assert( owner != _self && code != _self, 
                  "self cannot withdraw, cannot withdraw into self" 
                ); feeds feedstable( _self, _self.value );
-   const auto& fc = feedstable.get( quantity.symbol.code().raw(), 
+   const auto& feeds_it = feedstable.get( quantity.symbol.code().raw(), 
                                     "Feed does not exist" 
                                   );
    action(
@@ -829,49 +836,43 @@ ACTION bank.cdp::withdraw( name owner, asset quantity, string memo )
       code, name( "transfer" ),
       std::make_tuple( _self, owner, quantity, memo )
    ).send(); 
-   feedstable.modify( fc, same_payer, [&]( auto& f ) 
+   feedstable.modify( feeds_it, same_payer, [&]( auto& f ) 
    {  f.total -= quantity; });
 }
 
-ACTION bank.cdp::close( name owner, symbol_code symbl ) 
+ACTION bankcdp::close( name owner, symbol_code symbl ) 
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
    accounts acnts( _self, symbl.raw() );
-   auto it = acnts.get( owner.value,
-                        "no balance object found"
-                      );
-   eosio_assert( cdp_it.balance.amount == 0, 
-                 "balance must be zero" 
-               );
-   acnts.erase( it );
+   auto accounts_it = acnts.get( owner.value, "No balance object found" );
+   eosio_assert( accounts_it.balance.amount == 0, "Balance must be zero" );
+   acnts.erase( accounts_it );
 }
 
-name bank.cdp::sub_balance( name owner, asset value ) 
+name bankcdp::sub_balance( name owner, asset value ) 
 {  accounts from_acnts( _self, value.symbol.code().raw() );
-   const auto& from = from_acnts.get( owner.value, 
-                                      "no balance object found" 
-                                    );
-   eosio_assert( from.balance.amount >= value.amount, 
+   const auto& from_account_it = from_acnts.get( owner.value, "No balance object found" );
+   eosio_assert( from_account_it.balance.amount >= value.amount, 
                  "overdrawn balance" 
                );
-   from_acnts.modify( from, owner, [&]( auto& a ) 
-   {  a.balance -= value; }); return from.code;
+   from_acnts.modify( from_account_it, owner, [&]( auto& a ) 
+   {  a.balance -= value; }); return from_account_it.code;
 }
 
-void bank.cdp::add_balance( name owner, asset value, name code ) 
+void bankcdp::add_balance( name owner, asset value, name code ) 
 {  accounts to_acnts( _self, value.symbol.code().raw() );
-   auto to = to_acnts.find( owner.value );
+   auto accounts_to_it = to_acnts.find( owner.value );
    
-   if ( to == to_acnts.end() ) 
+   if ( accounts_to_it == to_acnts.end() ) 
       to_acnts.emplace( _self, [&]( auto& a ) { 
          a.balance = value;
          a.owner = owner; 
          a.code = code; 
       });
    else {
-      eosio_assert( to->code == code, "wrong contract" );
-      to_acnts.modify( to, same_payer, [&]( auto& a ) 
+      eosio_assert( accounts_to_it->code == code, "wrong contract" );
+      to_acnts.modify( accounts_to_it, same_payer, [&]( auto& a ) 
       { a.balance += value; });
    }
 }
@@ -879,9 +880,9 @@ void bank.cdp::add_balance( name owner, asset value, name code )
 //checking all transfers, and not only from EOS system token
 extern "C" void apply( uint64_t receiver, uint64_t code, uint64_t action ) 
 {  if ( action == "transfer"_n.value && code != receiver )
-      eosio::execute_action( eosio::name(receiver), eosio::name(code), &bank.cdp::deposit );
+      eosio::execute_action( eosio::name(receiver), eosio::name(code), &bankcdp::deposit );
    if ( code == receiver )
       switch ( action ) {
-         EOSIO_DISPATCH_HELPER( bank.cdp, /*(give)*/(open)(close)(shut)(lock)(bail)(draw)(wipe)(settle)(vote)(propose)(referended)(liquify)(upfeed)(withdraw) )
+         EOSIO_DISPATCH_HELPER( bankcdp, /*(give)*/(open)(close)(shut)(lock)(bail)(draw)(wipe)(settle)(vote)(propose)(referended)(liquify)(upfeed)(withdraw) )
       }
 }

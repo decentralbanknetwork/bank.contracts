@@ -17,7 +17,7 @@ using namespace eosio;
 using std::make_tuple;
 using std::string;
 
-CONTRACT bank.cdp : public contract 
+CONTRACT bankcdp : public contract 
 {  using contract::contract;
    public:
       static constexpr uint32_t SECYR = 10; //31557600; // TODO: Secs per avf year
@@ -60,9 +60,9 @@ CONTRACT bank.cdp : public contract
        */ ACTION referended( name proposer, symbol_code symbl );
 
       /* liquify action 
-       * If the collateral value in a CDP drops below 150% of the outstanding Dai, 
+       * If the collateral value in a CDP drops below 150% of the outstanding stablecoin, 
        * the contract automatically sells enough of your collateral to buy back as
-       * many Dai as you issued. The issued Dai is thus taken out of circulation. Similar to a margin call.
+       * many stablecoin as you issued. The issued stablecoin is thus taken out of circulation. Similar to a margin call.
        */ ACTION liquify( name bidder, name owner, 
                           symbol_code symbl, asset bidamt );
       
@@ -78,7 +78,7 @@ CONTRACT bank.cdp : public contract
       /* Issue fresh stablecoin from this CDP.
        */ ACTION draw( name owner, symbol_code symbl, asset quantity );
 
-      /* Owner can send back dai and reduce 
+      /* Owner can send back stablecoin and reduce 
        * the CDP's issued stablecoin balance.
        */ ACTION wipe( name owner, symbol_code symbl, asset quantity );            
 
