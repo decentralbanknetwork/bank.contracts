@@ -596,12 +596,9 @@ ACTION bankcdp::liquify( name bidder, name owner, symbol_code symbl, asset bidam
    }
 }
 
-ACTION bankcdp::propose( name proposer, symbol_code symbl, 
-                              symbol clatrl, symbol_code stabl,
-                              uint64_t max, uint64_t gmax, 
-                              uint64_t pen, uint64_t fee,
-                              uint64_t beg, uint64_t liq, 
-                              uint32_t tau, uint32_t ttl,
+// Propose a new CDP type, or modification of an existing one
+ACTION bankcdp::propose( name proposer, symbol_code symbl, symbol clatrl, symbol_code stabl, uint64_t max, uint64_t gmax, 
+                              uint64_t pen, uint64_t fee, uint64_t beg, uint64_t liq, uint32_t tau, uint32_t ttl,
                               name feeder, name contract ) 
 {  
    // Make sure the proposer is authenticated
@@ -613,24 +610,34 @@ ACTION bankcdp::propose( name proposer, symbol_code symbl,
    eosio_assert( clatrl.is_valid(), "Invalid collateral symbol name" );
    eosio_assert( stabl.is_valid(), "Invalid stablecoin symbol name" );
 
+   // Get the proposals
    props propstable( _self, _self.value );
    eosio_assert( propstable.find( symbl.raw() ) == propstable.end(), "Proposal for this CDP type already in session" );
 
-   /* scope into owner because self scope may already have this symbol.
+   /* Scope into owner because self scope may already have this symbol.
     * if symbol exists in self scope and this proposal is voted into live,
     * then original symbol would be erased, and symbol in proposer's scope
     * will be moved into self scope, then erased from proposer's scope.
     */ 
    stats stable( _self, _self.value );   
    stats pstable( _self, proposer.value ); 
+
+   // Make sure the symbol is not already being proposed
    eosio_assert( pstable.find( symbl.raw() ) == pstable.end(), "Proposer already claimed this CDP type" ); 
+
+   // Make sure the collateral and stablecoin symbols exist
    feeds feedstable(_self, _self.value);
    eosio_assert( feedstable.find( symbl.raw() ) == feedstable.end(), "Can't propose collateral or governance symbols" ); 
    eosio_assert( feedstable.find( stabl.raw() ) != feedstable.end(), "Can't propose an unknown stablecoin symbol" );
+
+   // Make sure that only privileged accounts can propose settlement on an existing CDP type
    if ( !tau && !ttl ) { // passing 0 for ttl, tau = flip settlement
       const auto& stats_it = stable.get( symbl.raw(), "CDP type does not exist" );
-      eosio_assert( proposer == stats_it.feeder, "Only priviliged accounts may propose global settlement" );
-   } else {
+      eosio_assert( proposer == stats_it.feeder, "Only privileged accounts may propose global settlement" );
+   } 
+   // If a global settlement is not being proposed and an existing CDP type, proceed
+   else {
+      // Do some tests on the proposal values 
       eosio_assert( max < gmax && max > 0 &&
                     gmax <= max * 1000000 &&
                     pen <= 100 && pen > 0 &&
@@ -638,8 +645,10 @@ ACTION bankcdp::propose( name proposer, symbol_code symbl,
                     beg <= 100 && beg > 0 &&
                     liq <= 1000 && liq >= 100
                     && tau <= 3600 
-                    && ttl <= 600, "bad props"
+                    && ttl <= 600, "Bad proposal value(s)"
                   ); //TODO: are these realistic?
+
+      // Add the proposal to the table
       pstable.emplace( proposer, [&]( auto& t ) {
          t.tau = tau;
          t.ttl = ttl;
@@ -653,11 +662,11 @@ ACTION bankcdp::propose( name proposer, symbol_code symbl,
          t.stability_fee = fee;
          t.fee_balance = asset( 0, IQ_SYMBOL ); 
          t.total_stablecoin = asset( 0, symbol( stabl, 2 ) ); 
-         t.total_collateral = extended_asset( asset( 0, clatrl ), 
-                                              contract
-                                            );
+         t.total_collateral = extended_asset( asset( 0, clatrl ), contract );
       });
    }
+
+   // Add the proposal to the table
    propstable.emplace( proposer, [&]( auto& p ) {
       p.cdp_type = symbl;
       p.proposer = proposer;
@@ -665,26 +674,32 @@ ACTION bankcdp::propose( name proposer, symbol_code symbl,
       p.nay = asset( 0, IQ_SYMBOL );
       p.yay = asset( 0, IQ_SYMBOL );
    }); 
+
+   // Create a transaction
    transaction txn{};
-   txn.actions.emplace_back(  permission_level { _self, "active"_n },
-                              _self, "referended"_n, 
-                              make_tuple( proposer, symbl )
-                           ); txn.delay_sec = VOTE_PERIOD;
+   txn.actions.emplace_back( permission_level { _self, "active"_n }, _self, "referended"_n, make_tuple( proposer, symbl ) );
+   txn.delay_sec = VOTE_PERIOD;
+
+   // Create the transaction and send it
    uint128_t txid = (uint128_t(proposer.value) << 64) | now();
    txn.send(txid, _self); 
 }
 
+// Implement a completed CDP proposal
 ACTION bankcdp::referended( name proposer, symbol_code symbl ) 
 {  
    // Make sure the contract is authenticated
    require_auth( _self );
    eosio_assert( symbl.is_valid(), "Invalid symbol name" );
   
+   // Get the proposal and make sure the deadline has been reached
    props propstable( _self, _self.value );
    const auto& props_it = propstable.get( symbl.raw(), "No such proposal" );
    eosio_assert( now() >= props_it.deadline, "Too soon to be referended" );
       
-   if ( props_it.yay == props_it.nay ) { //vote tie, so revote
+   // If there is a tie, extend the voting period
+   // TODO: This if block may need to actually change props_it.deadline...
+   if ( props_it.yay == props_it.nay ) { 
       transaction txn{};
       txn.actions.emplace_back(  permission_level { _self, "active"_n },
                                  _self, "referended"_n, 
@@ -692,17 +707,28 @@ ACTION bankcdp::referended( name proposer, symbol_code symbl )
                               ); txn.delay_sec = VOTE_PERIOD;
       uint128_t txid = (uint128_t(proposer.value) << 64) | now();
       txn.send(txid, _self); 
-   } else { //the proposal was voted in for or against
+   } 
+   // The proposal was voted for or against
+   else { 
+      // Get the proposal
       stats pstable( _self, proposer.value );
       auto pstats_it = pstable.find( symbl.raw() );
+
+      // Determine if a global settlement was voted on
       bool settlement = ( pstats_it == pstable.end() );
-      if ( props_it.yay > props_it.nay ) { //implement proposed changes...
+
+      // If the yays have it...
+      if ( props_it.yay > props_it.nay ) {
+         // Make sure the stablecoin exists
          stats stable( _self, _self.value );
          auto stat_exist = stable.find( symbl.raw() );
+
+         // If a global settlement was voted on, turn it on or off
          if ( settlement )
             stable.modify( stat_exist, same_payer, [&]( auto& t ) 
             {  t.live = !t.live; });
          else {
+            // Otherwise, create the CDP type if it doesn't exist
             if ( stat_exist == stable.end() )
                stable.emplace( _self, [&]( auto& t ) {
                   t.live = true;
@@ -721,6 +747,7 @@ ACTION bankcdp::referended( name proposer, symbol_code symbl )
                   t.total_stablecoin = pstats_it->total_stablecoin;
                   t.total_collateral = pstats_it->total_collateral;
                });
+            // Or modify an existing one
             else
                stable.modify( stat_exist, same_payer, [&]( auto& t ) {
                   t.live = true;
@@ -736,21 +763,26 @@ ACTION bankcdp::referended( name proposer, symbol_code symbl )
                   t.liquid8_ratio = pstats_it->liquid8_ratio;
                });
          }
-      } //refund all voters' voting tokens
+      }
+      // Refund all voters' voting tokens
       accounts vacnts( _self, symbl.raw() );
       auto accounts_it = vacnts.begin();
-      while ( accounts_it != vacnts.end() ) { //TODO: refactor, unsustainable loop
+
+      //TODO: refactor, unsustainable loop
+      while ( accounts_it != vacnts.end() ) { 
          add_balance( accounts_it->owner, asset( accounts_it->balance.amount, IQ_SYMBOL ), IQ_NAME );   
          accounts_it = vacnts.erase( accounts_it );
       } 
-      if ( !settlement ) //safely erase the proposal
+
+      // Safely erase the proposal 
+      if ( !settlement ) 
          pstable.erase( *pstats_it );
       propstable.erase( props_it );
    }
 }
 
-ACTION bankcdp::upfeed( name feeder, asset price, 
-                             symbol_code cdp_type, symbol symbl ) 
+// Add price data to the price feed
+ACTION bankcdp::upfeed( name feeder, asset price, symbol_code cdp_type, symbol symbl ) 
 {  
    // Make sure the feeder is authenticated
    require_auth( feeder );
@@ -760,83 +792,114 @@ ACTION bankcdp::upfeed( name feeder, asset price,
    eosio_assert( symbl.is_valid(), "Invalid symbol name" );
    eosio_assert( price.amount > 0, "Must use a positive quantity" );
 
+   // If the feeder is not _self, do some further checks on the input
    if ( !has_auth( _self ) ) {
+      // Get the CDP stats and make sure it exists
       stats stable( _self, _self.value );
-      const auto& stats_it = stable.get( cdp_type.raw(), 
-                                   "CDP type does not exist" 
-                                 );
-      eosio_assert( stats_it.feeder == feeder, 
-                    "account not authorized to be price feeder"  
-                  );
-      eosio_assert( stats_it.total_stablecoin.symbol == price.symbol, 
-                    "price symbol must match stablecoin symbol"
-                  );
-      eosio_assert( stats_it.total_collateral.quantity.symbol == symbl, 
-                    "asset symbol must match collateral symbol" 
-                  );
-   } feeds feedstable( _self, _self.value );
+      const auto& stats_it = stable.get( cdp_type.raw(), "CDP type does not exist" );
+
+      // Double check that the CDP feeder matches the feeder calling this action
+      eosio_assert( stats_it.feeder == feeder, "Account not authorized to be price feeder" );
+
+      // Check that the stablecoin symbol provided and the asset price match those in the CDP type
+      eosio_assert( stats_it.total_stablecoin.symbol == price.symbol, "Price symbol must match stablecoin symbol" );
+      eosio_assert( stats_it.total_collateral.quantity.symbol == symbl, "Asset symbol must match collateral symbol" );
+   }
+   
+   // Get the price feed data for the input symbol
+   feeds feedstable( _self, _self.value );
    auto feeds_it = feedstable.find( symbl.code().raw() );
+
+   // Update the price feed for an existing feeds table entry
    if ( feeds_it != feedstable.end() )
       feedstable.modify( feeds_it, feeder, [&]( auto& f ) {
          f.price.amount *= (17 / 20);
          f.price.amount += (3 / 20) * price.amount;
          f.stamp = now();
       });
-   else
+   // Create a new feeds table entry
+   else {
       feedstable.emplace( _self, [&]( auto& f ) {
          f.total = asset( 0, symbl );
          f.price = price;
          f.stamp = now();
       }); 
+   }
+
 }
 
-ACTION bankcdp::deposit( name from, name to,
-                              asset quantity, string memo ) 
+// NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+// NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+// NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+// NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+
+// Deposit IQ into the contract?
+// TODO: Not sure about the description here
+ACTION bankcdp::deposit( name from, name to, asset quantity, string memo ) 
 {  
    // Make sure the depositor is authenticated
    require_auth( from );
+
+   // Get the contract information
    name contract = get_code();
+
+   // Verify that the transfer parameters are valid
    eosio_assert( quantity.is_valid(), "Invalid quantity" );
-   eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
-   eosio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
+   eosio_assert( quantity.amount > 0, "Must transfer positive quantity" );
+   eosio_assert( memo.size() <= 256, "Memo has more than 256 bytes" );
+
+   // Verify that the sender is not _self
    if ( from != _self ) {
-      eosio_assert( to == _self, "can only deposit to self" ); 
+      // Assert that 'to' is the contract
+      eosio_assert( to == _self, "Can only deposit to self" ); 
       if ( quantity.symbol == IQ_SYMBOL )
-         eosio_assert ( contract == IQ_NAME, 
-                        "IQ deposit must come from IQ contract" 
-                      );
+         eosio_assert ( contract == IQ_NAME, "IQ deposit must come from IQ contract" );
+
+      // Add the balance to the contract
+      // TODO: does this need a subtract from the sender as well?
       add_balance( from, quantity, contract );
+
+      // Get the price feed
       feeds feedstable( _self, _self.value );
-      const auto& feeds_it = feedstable.get( quantity.symbol.code().raw(), 
-                                       "Feed does not exist" 
-                                     );
+      const auto& feeds_it = feedstable.get( quantity.symbol.code().raw(), "Feed does not exist" );
+
+      // Update the price feed total amount
       feedstable.modify( feeds_it, same_payer, [&]( auto& f ) 
       {  f.total += quantity; });
    }
 }
 
-ACTION bankcdp::transfer( name from, name to,
-                               asset quantity, string memo )
+// Transfer stablecoin
+ACTION bankcdp::transfer( name from, name to, asset quantity, string memo )
 {  
    // Make sure the depositor is authenticated
    require_auth( from );
-   eosio_assert( is_account( to ), "to account does not exist");
-   eosio_assert( from != to, "cannot transfer to self" );
+
+   // Validate the sending parameters
+   eosio_assert( is_account( to ), "To account does not exist");
+   eosio_assert( from != to, "Cannot transfer to self" );
    eosio_assert( quantity.is_valid(), "Invalid quantity" );
-   eosio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
-   eosio_assert( quantity.amount > 0, "must transfer positive quantity" );
+   eosio_assert( memo.size() <= 256, "Memo has more than 256 bytes" );
+   eosio_assert( quantity.amount > 0, "Must transfer positive quantity" );
+
+   // Subtract stablecoin from the 'from' and give it to the 'to'
    name contract = sub_balance( from, quantity );
-   eosio_assert( contract == _self, "can only transfer stablecoin");
+   eosio_assert( contract == _self, "Can only transfer stablecoin");
    add_balance( to, quantity, contract);
 }
 
+// Withdraw IQ from the contract
 ACTION bankcdp::withdraw( name owner, asset quantity, string memo ) 
 {  
    // Make sure the owner is authenticated
    require_auth( owner );
+
+   // Validate the parameters
    eosio_assert( quantity.is_valid(), "Invalid quantity" );
-   eosio_assert( quantity.amount >= 0, "must transfer positive quantity" );
-   eosio_assert( memo.size() <= 256, "memo has more than 256 bytes" );
+   eosio_assert( quantity.amount >= 0, "Must transfer positive quantity" );
+   eosio_assert( memo.size() <= 256, "Memo has more than 256 bytes" );
+
+
    if ( quantity.amount == 0 )
       quantity = get_balance( _self, quantity.symbol.code(), owner );
    name code = sub_balance( owner, quantity );

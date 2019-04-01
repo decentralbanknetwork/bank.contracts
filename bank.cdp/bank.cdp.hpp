@@ -95,6 +95,10 @@ CONTRACT bankcdp : public contract
       // Open CDP or initiate balances for account
       ACTION open( name owner, symbol_code symbl, name ram_payer );
 
+      // NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+      // NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+      // NEED DESCRIPTIONS FOR THE FUNCTIONS BELOW
+
       ACTION withdraw( name owner, asset quantity, string memo );
 
       // Close balance of given symbol for account
