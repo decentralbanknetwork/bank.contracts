@@ -76,23 +76,27 @@ fi
 if [ $BUILD -eq 1 ]; then
     cd bank.shares
     echo "Building bank.shares..."
-    /usr/local/bin/eosio-cpp -abigen bank.shares.cpp -o bank.shares.wasm -I bank.shares.clauses.md -I bank.shares.contracts.md
+    eosio-cpp -abigen bank.shares.cpp -o bank.shares.wasm -I bank.shares.clauses.md -I bank.shares.contracts.md
 
     cd bank.price
     echo "Building bank.price..."
-    /usr/local/bin/eosio-cpp -abigen bank.price.cpp -o bank.price.wasm -I bank.price.clauses.md -I bank.price.contracts.md
+    eosio-cpp -abigen bank.price.cpp -o bank.price.wasm -I bank.price.clauses.md -I bank.price.contracts.md
 
     cd bank.utxo
     echo "Building bank.utxo..."
-    /usr/local/bin/eosio-cpp -abigen bank.utxo.cpp -o bank.utxo.wasm -I bank.utxo.clauses.md -I bank.utxo.contracts.md
+    eosio-cpp -abigen bank.utxo.cpp -o bank.utxo.wasm -I bank.utxo.clauses.md -I bank.utxo.contracts.md
 
     cd bank.token
     echo "Building bank.token..."
-    /usr/local/bin/eosio-cpp -abigen bank.token.cpp -o bank.token.wasm -I bank.token.clauses.md -I bank.token.contracts.md
+    eosio-cpp -abigen bank.token.cpp -o bank.token.wasm -I bank.token.clauses.md -I bank.token.contracts.md
 
     cd bank.safesnd
     echo "Building bank.safesnd..."
-    /usr/local/bin/eosio-cpp -abigen bank.safesnd.cpp -o bank.safesnd.wasm
+    eosio-cpp -abigen bank.safesnd.cpp -o bank.safesnd.wasm
+
+    cd bank.cdp
+    echo "Building bank.cdp..."
+    eosio-cpp -abigen bank.cdp.cpp -o bank.cdp.wasm -I bank.cdp.clauses.md -I bank.cdp.contracts.md
 
     cd ..
 fi
@@ -209,6 +213,7 @@ if [ $BOOTSTRAP -eq 1 ]; then
     cleos set contract bank.utxo bank.utxo/
     cleos set contract bank.token bank.token/
     cleos set contract bank.safesnd bank.safesnd/
+    cleos set contract bank.cdp bank.cdp/
 
     # UNTESTED
     # Grant permission for the bank.shares contract to issue more BANK tokens
