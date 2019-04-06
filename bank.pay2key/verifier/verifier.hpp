@@ -7,15 +7,18 @@
 using namespace eosio;
 using namespace std;
 
-class bankutxo : public contract {
-  public:
+const eosio::symbol EOS_SYMBOL = symbol(symbol_code("EOS"), 4);
+const eosio::symbol UTXO_SYMBOL = symbol(symbol_code("UTXO"), 4);
+const std::string WITHDRAW_ADDRESS = "EOS1111111111111111111111111111111114T1Anm";
+uint8_t WITHDRAW_KEY_BYTES[37] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 134, 231, 181, 34 };
+
+class [[eosio::contract]] verifier : public eosio::contract {
+
+public:
     using contract::contract;
 
     [[eosio::action]]
     void create(name issuer, asset maximum_supply);
-
-    [[eosio::action]]
-    void issue(public_key to, asset quantity, const string memo);
 
     [[eosio::action]]
     void transfer(
@@ -28,10 +31,17 @@ class bankutxo : public contract {
                 string memo,
                 signature sig);
 
+    // Public but not a directly callable action
+    // Called indirectly by sending EOS to this contract
+    // Has the same function signature as everipediaiq::transfer
+    void issue(name from, name to, asset quantity, string memo);
+
+
     struct [[eosio::table]] account {
       uint64_t key;
       public_key publickey;
       asset balance;
+      uint64_t last_nonce;
 
       uint64_t primary_key() const { return key; }
       fixed_bytes<32> bypk() const {
@@ -47,28 +57,12 @@ class bankutxo : public contract {
         uint64_t primary_key() const { return supply.symbol.raw(); }
     };
 
-    struct [[eosio::table]] nonce {
-        uint64_t id;
-        public_key publickey;
-        uint64_t last_nonce;
-
-        uint64_t primary_key() const { return id; }
-        fixed_bytes<32> bypk() const {
-            return public_key_to_fixed_bytes(publickey);
-        };
-    };
-
     typedef eosio::multi_index<"accounts"_n,
                                account,
                                indexed_by<"bypk"_n, const_mem_fun<account, fixed_bytes<32>, &account::bypk>>
                               > accounts;
 
     typedef eosio::multi_index<"stats"_n, currstats> stats;
-
-    typedef eosio::multi_index<"nonces"_n,
-                               nonce,
-                               indexed_by<"bypk"_n, const_mem_fun<nonce, fixed_bytes<32>, &nonce::bypk>>
-                              > nonces;
 
   private:
 
