@@ -15,6 +15,7 @@ class App extends Component {
       fee: 1,
       nonce: 1,
       memo: '',
+      sig: '',
     };
   }
 
@@ -34,6 +35,7 @@ class App extends Component {
   }
 
   handleSubmit = (event) => {
+    event.preventDefault();
     const sig = this.transactionSignature(this.state.from,
                                           this.state.fromPrivateKey,
                                           this.state.to,
@@ -41,6 +43,8 @@ class App extends Component {
                                           this.state.fee,
                                           this.state.nonce,
                                           this.state.memo);
+    this.setState({ sig: sig });
+    console.log(sig);
     // this.apiRequest(sig);
   }
 
@@ -109,6 +113,8 @@ class App extends Component {
   }
 
   render() {
+    const { sig } = this.state;
+
     return (
       <div className="App">
         <form onSubmit={this.handleSubmit}>
@@ -172,6 +178,7 @@ class App extends Component {
                    className="input" />
           </label>
           <input type="submit" value="Transfer" disabled={this.isSubmitDisabled()} />
+          {sig ? <div style={{ maxWidth: '600px', wordWrap: 'break-word' }}>{sig}</div> : null }
         </form>
       </div>
     );
