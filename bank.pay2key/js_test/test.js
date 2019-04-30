@@ -41,7 +41,7 @@ function transferCommand(relayer, fromKeys, to, amount, fee, nonce, memo) {
   // sign transaction
   const sig = ecc.signHash(hashed, fromKeys.private);
 
-  return `cleos push action utxo transfer '["${relayer}", "${fromKeys.public}", "${to}", "${amount}.0000 UTXO", "${fee}.0000 UTXO", ${nonce}, "${memo}", "${sig}"]' -p utxo`;
+  return `cleos push action bank.pay2key transfer '["${relayer}", "${fromKeys.public}", "${to}", "${amount}.0000 UTXO", "${fee}.0000 UTXO", ${nonce}, "${memo}", "${sig}"]' -p bank.pay2key`;
 }
 
 // due to JS limitaitons, this only has 48-bit precision,
@@ -65,7 +65,7 @@ async function test() {
   shell.exec(`cleos wallet import --private-key ${utxoKeys.private}`);
 
   // account setup
-  shell.exec(`cleos create account eosio utxo ${utxoKeys.public}`);
+  shell.exec(`cleos create account eosio bank.pay2key ${utxoKeys.public}`);
   shell.exec(`cleos create account eosio everipediaiq ${utxoKeys.public}`);
   shell.exec(`cleos create account eosio eosio.token ${utxoKeys.public}`);
 
@@ -75,30 +75,30 @@ async function test() {
   shell.exec(`cleos push action eosio.token issue '["eosio", "1000.0000 EOS", "memo"]' -p eosio`)
 
   // compilation and setting
-  shell.exec('eosio-cpp -w -o ../verifier/verifier.wasm ../verifier/verifier.cpp');
-  shell.exec('cleos set contract utxo ../verifier');
+  shell.exec('eosio-cpp -w -o ../bank.pay2key.wasm ../bank.pay2key.cpp');
+  shell.exec('cleos set contract bank.pay2key ..');
 
   // create
-  shell.exec('cleos push action utxo create \'["utxo", "100.0000 UTXO"]\' -p utxo');
-  shell.exec('cleos get table utxo 340784338180 stats');
+  shell.exec('cleos push action bank.pay2key create \'["bank.pay2key", "100.0000 UTXO"]\' -p bank.pay2key');
+  shell.exec('cleos get table bank.pay2key 340784338180 stats');
 
   // issue
-  shell.exec(`cleos transfer eosio utxo "1.0000 EOS" ${utxoKeys.public}`);
-  shell.exec(`cleos transfer eosio utxo "5.0000 EOS" ${firstAccountKeys.public}`);
-  shell.exec(`cleos transfer eosio utxo "5.0000 EOS" ${secondAccountKeys.public}`);
-  shell.exec('cleos get table utxo utxo accounts');
+  shell.exec(`cleos transfer eosio bank.pay2key "1.0000 EOS" ${utxoKeys.public}`);
+  shell.exec(`cleos transfer eosio bank.pay2key "5.0000 EOS" ${firstAccountKeys.public}`);
+  shell.exec(`cleos transfer eosio bank.pay2key "5.0000 EOS" ${secondAccountKeys.public}`);
+  shell.exec('cleos get table bank.pay2key bank.pay2key accounts');
 
   // transfer, expected balances is 2, 7, 2
   shell.exec(transferCommand(utxoKeys.public, secondAccountKeys, firstAccountKeys.public, 3, 1, 1, "transfer from second account to first"));
   shell.exec(transferCommand(utxoKeys.public, firstAccountKeys, secondAccountKeys.public, 1, 0, 1, "transfer from second account to first"));
-  shell.exec('cleos get table utxo utxo accounts');
+  shell.exec('cleos get table bank.pay2key bank.pay2key accounts');
 
   // withdrawal, expected balances is 2, 2, 2
-  shell.exec(`cleos set account permission utxo active '{ "threshold": 1, "keys": [{ "key": "${utxoKeys.public}", "weight": 1 }], "accounts": [{ "permission": { "actor":"utxo","permission":"eosio.code" }, "weight":1 } ] }' owner -p utxo`);
-  shell.exec(transferCommand(utxoKeys.public, firstAccountKeys, 'EOS1111111111111111111111111111111114T1Anm', 5, 0, 2, 'eosio.token', 'utxo'));
-  shell.exec('cleos get table utxo utxo accounts');
+  shell.exec(`cleos set account permission bank.pay2key active '{ "threshold": 1, "keys": [{ "key": "${utxoKeys.public}", "weight": 1 }], "accounts": [{ "permission": { "actor":"bank.pay2key","permission":"eosio.code" }, "weight":1 } ] }' owner -p bank.pay2key`);
+  shell.exec(transferCommand(utxoKeys.public, firstAccountKeys, 'EOS1111111111111111111111111111111114T1Anm', 5, 0, 2, 'eosio.token', 'bank.pay2key'));
+  shell.exec('cleos get table bank.pay2key bank.pay2key accounts');
 
-  shell.exec('cleos get table utxo 340784338180 stats');
+  shell.exec('cleos get table bank.pay2key 340784338180 stats');
 }
 
 test();
