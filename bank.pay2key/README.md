@@ -33,12 +33,19 @@ To create a signed transaction to spend UTXOs, a signature must be created by th
 
 
 The Signature is generated with the following fields:
+
 Public key of the spender
+
 Private key of the spender
+
 Public key of the recipient  
+
 Amount of UTXO to spend (denominated as uint64)
+
 Amount of UTXO to pay as fee (denominated as uint64)
+
 A nonce (we highly recommend incrementing the nonce by 1 starting from 0 for each public key) 
+
 A memo/string field
 
 In the future, we will add a token ID field to add replay protection to generated signatures. 
