@@ -12,7 +12,7 @@ const eosio::symbol UTXO_SYMBOL = symbol(symbol_code("UTXO"), 4);
 const std::string WITHDRAW_ADDRESS = "EOS1111111111111111111111111111111114T1Anm";
 uint8_t WITHDRAW_KEY_BYTES[37] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 134, 231, 181, 34 };
 
-class [[eosio::contract]] verifier : public eosio::contract {
+class [[eosio::contract]] pay2key : public eosio::contract {
 
 public:
     using contract::contract;

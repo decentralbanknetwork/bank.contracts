@@ -1,8 +1,8 @@
-#include "verifier.hpp"
+#include "bank.pay2key.hpp"
 #include "base58.c"
 
 [[eosio::action]]
-void verifier::create(name issuer, asset maximum_supply) {
+void pay2key::create(name issuer, asset maximum_supply) {
     require_auth( _self );
 
     auto symbol = maximum_supply.symbol;
@@ -21,7 +21,7 @@ void verifier::create(name issuer, asset maximum_supply) {
     });
 }
 
-void verifier::issue(name from, name to, asset quantity, string memo) {
+void pay2key::issue(name from, name to, asset quantity, string memo) {
     if (from == _self) return; // sending EOS, ignore
 
     auto symbol = quantity.symbol;
@@ -70,7 +70,7 @@ void verifier::issue(name from, name to, asset quantity, string memo) {
 }
 
 [[eosio::action]]
-void verifier::transfer(
+void pay2key::transfer(
             public_key relayer,
             public_key from,
             public_key to,
@@ -171,7 +171,7 @@ void verifier::transfer(
 
 }
 
-void verifier::sub_balance(public_key sender, asset value) {
+void pay2key::sub_balance(public_key sender, asset value) {
     accounts from_acts(_self, _self.value);
 
     auto accounts_index = from_acts.get_index<name("bypk")>();
@@ -187,7 +187,7 @@ void verifier::sub_balance(public_key sender, asset value) {
     }
 }
 
-void verifier::add_balance(public_key recipient, asset value) {
+void pay2key::add_balance(public_key recipient, asset value) {
     accounts to_acts(_self, _self.value);
 
     auto accounts_index = to_acts.get_index<name("bypk")>();
@@ -213,19 +213,19 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)
     if (code == name("eosio.token").value && action == name("transfer").value)
     {
         eosio::execute_action(
-            eosio::name(receiver), eosio::name(code), &verifier::issue
+            eosio::name(receiver), eosio::name(code), &pay2key::issue
         );
     }
     else if (code == _self && action == name("create").value)
     {
         eosio::execute_action(
-            eosio::name(receiver), eosio::name(code), &verifier::create
+            eosio::name(receiver), eosio::name(code), &pay2key::create
         );
     }
     else if (code == _self && action == name("transfer").value)
     {
         eosio::execute_action(
-            eosio::name(receiver), eosio::name(code), &verifier::transfer
+            eosio::name(receiver), eosio::name(code), &pay2key::transfer
         );
     }
 }
