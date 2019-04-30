@@ -5,6 +5,7 @@ const fetch = require('node-fetch');
 const dotenv = require('dotenv');
 const eosjs = require('eosjs');
 const jssig = require('eosjs/dist/eosjs-jssig');
+const morgan = require('morgan');
 
 const Api = eosjs.Api;
 const JsonRpc = eosjs.JsonRpc;
@@ -13,6 +14,14 @@ const JsSignatureProvider = jssig.JsSignatureProvider;
 require('dotenv').config()
 
 const app = express();
+app.use(morgan('combined'));
+
+// CORS
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
 
 const rpc = new JsonRpc(process.env.EOS_API_BASE, { fetch });
 const signatureProvider = new JsSignatureProvider([process.env.RELAYER_PRIVATE_KEY]);
@@ -32,7 +41,13 @@ app.use(bodyParser.json());
  
 app.post('/relay', function (req, res) {
     const msg = req.body;
-    msgSchema.validate(msg);
+    const validates = Joi.validate(msg, msgSchema);
+    if (validates.error) {
+        const error = validates.error.details[0].message;
+        res.status(400).send({ error: error });
+        console.error(error);
+        return;
+    }
 
     msg.relayer = process.env.RELAYER_PUBLIC_KEY;
     
@@ -53,7 +68,7 @@ app.post('/relay', function (req, res) {
         res.status(200).send(response);
     }).catch(err => {
         console.error(err);
-        res.status(500).send(err.message);
+        res.status(500).send({ error: err.message });
     });
 
 })

@@ -2,7 +2,7 @@
 
 This HTTP server exposes a single endpoint:
 
-`/relay`: Relay a UTXO tranasction with the parameters specified in the `.env` file. Seem `SAMPLE.env` for how to configure the environment.
+`POST /relay`: Relay a UTXO tranasction with the parameters specified in the `.env` file. Seem `SAMPLE.env` for how to configure the environment.
 
 Example:
 
