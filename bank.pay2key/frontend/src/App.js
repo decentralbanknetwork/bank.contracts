@@ -45,7 +45,7 @@ class App extends Component {
                                           this.state.memo);
     this.setState({ sig: sig });
     console.log(sig);
-    // this.apiRequest(sig);
+    this.apiRequest(sig);
   }
 
   // due to JS limitaitons, this only has 48-bit precision,
@@ -85,7 +85,8 @@ class App extends Component {
   }
 
   apiRequest(signature) {
-    fetch("BACKEND_API_ENDPOINT", {
+    const RELAY_ENDPOINT = "http://epmainnet.libertyblock.io:6400/relay";
+    fetch(RELAY_ENDPOINT, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -94,13 +95,14 @@ class App extends Component {
       body: JSON.stringify({
         from: this.state.from,
         to: this.state.to,
-        amount: this.state.amount,
-        fee: this.state.fee,
+        amount: (this.state.amount / 1000).toFixed(3) + " IQUTXO",
+        fee: (this.state.fee / 1000).toFixed(3) + " IQUTXO",
         nonce: this.state.nonce,
         memo: this.state.memo,
-        signature: signature
+        sig: signature
       })
-    });
+    }).then(response => response.json())
+    .then(console.log);
   }
 
   isSubmitDisabled() {
