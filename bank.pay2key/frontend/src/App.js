@@ -45,7 +45,7 @@ class App extends Component {
                                           this.state.memo);
     this.setState({ sig: sig });
     console.log(sig);
-    // this.apiRequest(sig);
+    this.apiRequest(sig);
   }
 
   // due to JS limitaitons, this only has 48-bit precision,
@@ -84,8 +84,10 @@ class App extends Component {
     return ecc.signHash(hashed, fromPrivateKey);
   }
 
-  apiRequest(signature) {
-    fetch("BACKEND_API_ENDPOINT", {
+  async apiRequest(signature) {
+    this.setState({ error: null });
+    const RELAY_ENDPOINT = "http://epmainnet.libertyblock.io:6400/relay";
+    const relay_response = await fetch(RELAY_ENDPOINT, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -94,13 +96,20 @@ class App extends Component {
       body: JSON.stringify({
         from: this.state.from,
         to: this.state.to,
-        amount: this.state.amount,
-        fee: this.state.fee,
+        amount: (this.state.amount / 1000).toFixed(3) + " IQUTXO",
+        fee: (this.state.fee / 1000).toFixed(3) + " IQUTXO",
         nonce: this.state.nonce,
         memo: this.state.memo,
-        signature: signature
+        sig: signature
       })
-    });
+    })
+    .then(response => response.json())
+
+    console.log(relay_response);
+    if (relay_response.error)
+        this.setState({ error: relay_response.error });
+    else
+        this.setState({ txid: relay_response.transaction_id });
   }
 
   isSubmitDisabled() {
@@ -113,10 +122,11 @@ class App extends Component {
   }
 
   render() {
-    const { sig } = this.state;
+    const { txid, error } = this.state;
 
     return (
       <div className="App">
+        <h1>IQ Pay-to-key</h1>
         <form onSubmit={this.handleSubmit}>
           <label className="label">
             From Public Key:
@@ -178,8 +188,14 @@ class App extends Component {
                    className="input" />
           </label>
           <input type="submit" value="Transfer" disabled={this.isSubmitDisabled()} />
-          {sig ? <div style={{ maxWidth: '600px', wordWrap: 'break-word' }}>{sig}</div> : null }
         </form>
+
+        {error ? <div style={{ maxWidth: '600px', wordWrap: 'break-word', color: 'red', marginTop: '5px' }}>{error}</div> : null }
+        {txid ? 
+            <div style={{ maxWidth: '600px', wordWrap: 'break-word', marginTop: '5px' }}>
+                You transfer was successful. View it <a href={ "https://eosflare.io/tx/" + txid }>here</a>
+            </div> : null 
+        }
       </div>
     );
   }
