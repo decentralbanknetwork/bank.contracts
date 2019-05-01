@@ -84,9 +84,10 @@ class App extends Component {
     return ecc.signHash(hashed, fromPrivateKey);
   }
 
-  apiRequest(signature) {
+  async apiRequest(signature) {
+    this.setState({ error: null });
     const RELAY_ENDPOINT = "http://epmainnet.libertyblock.io:6400/relay";
-    fetch(RELAY_ENDPOINT, {
+    const relay_response = await fetch(RELAY_ENDPOINT, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -101,8 +102,14 @@ class App extends Component {
         memo: this.state.memo,
         sig: signature
       })
-    }).then(response => response.json())
-    .then(console.log);
+    })
+    .then(response => response.json())
+
+    console.log(relay_response);
+    if (relay_response.error)
+        this.setState({ error: relay_response.error });
+    else
+        this.setState({ txid: relay_response.transaction_id });
   }
 
   isSubmitDisabled() {
@@ -115,10 +122,11 @@ class App extends Component {
   }
 
   render() {
-    const { sig } = this.state;
+    const { txid, error } = this.state;
 
     return (
       <div className="App">
+        <h1>IQ Pay-to-key</h1>
         <form onSubmit={this.handleSubmit}>
           <label className="label">
             From Public Key:
@@ -180,8 +188,14 @@ class App extends Component {
                    className="input" />
           </label>
           <input type="submit" value="Transfer" disabled={this.isSubmitDisabled()} />
-          {sig ? <div style={{ maxWidth: '600px', wordWrap: 'break-word' }}>{sig}</div> : null }
         </form>
+
+        {error ? <div style={{ maxWidth: '600px', wordWrap: 'break-word', color: 'red', marginTop: '5px' }}>{error}</div> : null }
+        {txid ? 
+            <div style={{ maxWidth: '600px', wordWrap: 'break-word', marginTop: '5px' }}>
+                You transfer was successful. View it <a href={ "https://eosflare.io/tx/" + txid }>here</a>
+            </div> : null 
+        }
       </div>
     );
   }
