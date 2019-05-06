@@ -72,6 +72,10 @@ app.post('/relay', function (req, res) {
     });
 
 })
+
+app.get('/valid_nonce', function (req, res) {
+    const key = req.query.key;
+});
  
 app.listen(6400, (e) => {
     if (e) console.error(e);
