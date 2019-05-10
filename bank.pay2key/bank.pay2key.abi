@@ -1,10 +1,141 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Mon May  6 15:37:53 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri May 10 13:52:26 2019",
     "version": "eosio::abi/1.1",
-    "structs": [],
+    "structs": [
+        {
+            "name": "account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint64"
+                },
+                {
+                    "name": "publickey",
+                    "type": "public_key"
+                },
+                {
+                    "name": "balance",
+                    "type": "asset"
+                },
+                {
+                    "name": "last_nonce",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "create",
+            "base": "",
+            "fields": [
+                {
+                    "name": "token_contract",
+                    "type": "name"
+                },
+                {
+                    "name": "ticker",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "currstats",
+            "base": "",
+            "fields": [
+                {
+                    "name": "chain_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "token_contract",
+                    "type": "name"
+                },
+                {
+                    "name": "symbol",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "transfer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "chain_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "relayer_account",
+                    "type": "name"
+                },
+                {
+                    "name": "relayer",
+                    "type": "public_key"
+                },
+                {
+                    "name": "from",
+                    "type": "public_key"
+                },
+                {
+                    "name": "to",
+                    "type": "public_key"
+                },
+                {
+                    "name": "amount",
+                    "type": "asset"
+                },
+                {
+                    "name": "fee",
+                    "type": "asset"
+                },
+                {
+                    "name": "nonce",
+                    "type": "uint64"
+                },
+                {
+                    "name": "memo",
+                    "type": "string"
+                },
+                {
+                    "name": "sig",
+                    "type": "signature"
+                }
+            ]
+        }
+    ],
     "types": [],
-    "actions": [],
-    "tables": [],
+    "actions": [
+        {
+            "name": "create",
+            "type": "create",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "transfer",
+            "type": "transfer",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "accounts",
+            "type": "account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "stats",
+            "type": "currstats",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
     "ricardian_clauses": [],
     "variants": [],
     "abi_extensions": []

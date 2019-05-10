@@ -2,17 +2,21 @@
 #include "base58.c"
 
 [[eosio::action]]
-void pay2key::create(name token_contract, symbol ticker, uint64_t chain_id) {
+void pay2key::create(name token_contract, symbol ticker) {
     require_auth( _self );
 
     eosio_assert(ticker.is_valid(), "invalid symbol name");
 
-    stats statstable(_self, chain_id);
-    eosio_assert(statstable.begin() == statstable.end(), "chain_id already in use");
+    stats statstable(_self, _self.value);
+    auto contract_sym_index = statstable.get_index<name("byctrsym")>();
+    uint128_t merged = merge_contract_symbol(token_contract, ticker);
+    auto existing = contract_sym_index.find(merged);
+    eosio_assert(existing == contract_sym_index.end(), "Token is already registered");
 
     asset supply = asset(0, ticker);
 
     statstable.emplace(_self, [&](auto& s) {
+        s.chain_id = statstable.available_primary_key();
         s.symbol = ticker;
         s.token_contract = token_contract;
         s.supply = supply;
@@ -60,12 +64,15 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
     for (int i=0; i<4; i++)
         eosio_assert(checksum_bytes[i] == (uint8_t)issue_to.data[33+i], "invalid public key in memo: checksum does not validate");
 
-    add_balance(issue_to, quantity);
+    // Cannot charge RAM to other accounts during notify
+    // This is a major issue. How can we get the sender to pay for their own RAM?
+    add_balance(issue_to, quantity, _self);
 }
 
 [[eosio::action]]
 void pay2key::transfer(
             uint64_t chain_id,
+            name relayer_account,
             public_key relayer,
             public_key from,
             public_key to,
@@ -156,13 +163,13 @@ void pay2key::transfer(
     }
     // add the balance if it's not a withdrawal
     else {
-        add_balance(to, quantity);
+        add_balance(to, quantity, relayer_account);
     }
 
     // update balances with fees
     if (fee.amount > 0) {
         sub_balance(from, fee);
-        add_balance(relayer, fee);
+        add_balance(relayer, fee, relayer_account);
     }
 
 }
@@ -183,14 +190,14 @@ void pay2key::sub_balance(public_key sender, asset value) {
     }
 }
 
-void pay2key::add_balance(public_key recipient, asset value) {
+void pay2key::add_balance(public_key recipient, asset value, name ram_payer) {
     accounts to_acts(_self, _self.value);
 
     auto accounts_index = to_acts.get_index<name("bypk")>();
     auto to = accounts_index.find(public_key_to_fixed_bytes(recipient));
 
     if (to == accounts_index.end()) {
-        to_acts.emplace(_self, [&]( auto& a ){
+        to_acts.emplace(ram_payer, [&]( auto& a ){
             a.key = to_acts.available_primary_key();
             a.balance = value;
             a.publickey = recipient;

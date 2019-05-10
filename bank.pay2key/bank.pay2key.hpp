@@ -11,17 +11,18 @@ const eosio::symbol EOS_SYMBOL = symbol(symbol_code("EOS"), 4);
 const std::string WITHDRAW_ADDRESS = "EOS1111111111111111111111111111111114T1Anm";
 uint8_t WITHDRAW_KEY_BYTES[37] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 134, 231, 181, 34 };
 
-class [[eosio::contract]] pay2key : public eosio::contract {
+class [[eosio::contract("bank.pay2key")]] pay2key : public contract {
 
 public:
     using contract::contract;
     
     [[eosio::action]]
-    void create(name token_contract, symbol ticker, uint64_t chain_id);
+    void create(name token_contract, symbol ticker);
 
     [[eosio::action]]
     void transfer(
                 uint64_t chain_id,
+                name relayer_account,
                 public_key relayer,
                 public_key from,
                 public_key to,
@@ -65,7 +66,7 @@ public:
 
     typedef eosio::multi_index<"stats"_n, currstats,
        indexed_by<"bycontract"_n, const_mem_fun<currstats, uint64_t, &currstats::by_token_contract>>,
-       indexed_by<"byctrsym"_n, const_mem_fun<currstats, uint64_t, &currstats::by_token_contract>>
+       indexed_by<"byctrsym"_n, const_mem_fun<currstats, uint128_t, &currstats::by_contract_symbol>>
     > stats;
 
   private:
@@ -76,7 +77,7 @@ public:
 
     void sub_balance(public_key sender, asset value);
 
-    void add_balance(public_key recipient, asset value);
+    void add_balance(public_key recipient, asset value, name ram_payer);
 
     static uint128_t merge_contract_symbol( name contract, symbol sym ) {
         uint128_t merged;
