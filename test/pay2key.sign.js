@@ -9,10 +9,17 @@ function uint64_to_little_endian(num) {
   return buf;
 }
 
-function sign(from, to, amount, fee, nonce, memo, privkey) {
-  const version = 1;
-  const length = 92 + memo.length;
+function uint32_to_little_endian(num) {
+  const buf = Buffer.alloc(4);
+  buf.writeUIntLE(num, 0, 4);
+  return buf;
+}
 
+function sign(chain_id, from, to, amount, fee, nonce, memo, privkey) {
+  const version = 2;
+  const length = 96 + memo.length;
+
+  const chainidBuf = uint32_to_little_endian(chain_id);
   const pkeyFrom = base58.decode(from.substring(3));
   const pkeyTo = base58.decode(to.substring(3));
   const amountBuf = uint64_to_little_endian(amount);
@@ -24,12 +31,13 @@ function sign(from, to, amount, fee, nonce, memo, privkey) {
   const buffer = Buffer.alloc(length);
   buffer[0] = version;
   buffer[1] = length;
-  pkeyFrom.copy(buffer, 2, 0, 33);
-  pkeyTo.copy(buffer, 35, 0, 33);
-  amountBuf.copy(buffer, 68, 0, 8);
-  feeBuf.copy(buffer, 76, 0, 8);
-  nonceBuf.copy(buffer, 84, 0, 8);
-  memoBuf.copy(buffer, 92, 0, memoBuf.length);
+  chainidBuf.copy(buffer, 2, 0, 4);
+  pkeyFrom.copy(buffer, 6, 0, 33);
+  pkeyTo.copy(buffer, 39, 0, 33);
+  amountBuf.copy(buffer, 72, 0, 8);
+  feeBuf.copy(buffer, 80, 0, 8);
+  nonceBuf.copy(buffer, 88, 0, 8);
+  memoBuf.copy(buffer, 96, 0, memoBuf.length);
   //console.log(buffer.toString('hex'));
 
   // hash raw tx
@@ -44,10 +52,10 @@ function sign(from, to, amount, fee, nonce, memo, privkey) {
 
 ///////////////////////////////
 // Main Execution Thread
-if (process.argv.length != 9) {
+if (process.argv.length != 10) {
     console.log(`
-        USAGE: node sign.js [from] [to] [amount] [fee] [nonce] [privkey]
-        Example: node sign.js EOS7PoGq46ssqeGh8ZNScWQxqbwg5RNvLAwVw3i5dQcZ3a1h9nRyr EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt 10000 10 1 "token transfer" 5KQRA6BBHEHSbmvio3S9oFfVERvv79XXppmYExMouSBqPkZTD79
+        USAGE: node pay2key.sign.js [chain_id] [from] [to] [amount] [fee] [nonce] [memo] [privkey]
+        Example: node sign.js 0 EOS7PoGq46ssqeGh8ZNScWQxqbwg5RNvLAwVw3i5dQcZ3a1h9nRyr EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt 10000 10 1 "token transfer" 5KQRA6BBHEHSbmvio3S9oFfVERvv79XXppmYExMouSBqPkZTD79
     `);
 }
 else {

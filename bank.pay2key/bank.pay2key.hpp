@@ -75,9 +75,9 @@ public:
         return sha256(publickey.data.begin(), 33);
     }
 
-    void sub_balance(public_key sender, asset value);
+    void sub_balance(uint64_t chain_id, public_key sender, asset value);
 
-    void add_balance(public_key recipient, asset value, name ram_payer);
+    void add_balance(uint64_t chain_id, public_key recipient, asset value, name ram_payer);
 
     static uint128_t merge_contract_symbol( name contract, symbol sym ) {
         uint128_t merged;

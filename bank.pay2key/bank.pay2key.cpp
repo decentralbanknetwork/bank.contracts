@@ -66,7 +66,7 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
 
     // Cannot charge RAM to other accounts during notify
     // This is a major issue. How can we get the sender to pay for their own RAM?
-    add_balance(issue_to, quantity, _self);
+    add_balance(st.chain_id, issue_to, quantity, _self);
 }
 
 [[eosio::action]]
@@ -88,10 +88,10 @@ void pay2key::transfer(
 
     // verify symbol matches currency information
     eosio_assert(st.symbol == quantity.symbol, "quantity and chain_id symbols don't match. check decimal places");
-    eosio_assert(st.symbol == fee.symbol, "quantity and chain_id symbols don't match. check decimal places");
+    eosio_assert(st.symbol == fee.symbol, "fee and chain_id symbols don't match. check decimal places");
 
     // get last nonce
-    accounts accounts_table(_self, _self.value);
+    accounts accounts_table(_self, chain_id);
     auto pk_index = accounts_table.get_index<name("bypk")>();
     auto account_it = pk_index.find(public_key_to_fixed_bytes(from));
     uint64_t last_nonce = 0;
@@ -106,24 +106,37 @@ void pay2key::transfer(
     eosio_assert(fee.amount >= 0, "fee must be non-negative");
     eosio_assert(quantity.amount <= account_it->balance.amount, "user has insufficient balance");
     eosio_assert(quantity.amount + fee.amount <= account_it->balance.amount, "user has insufficient balance to cover fee");
-    eosio_assert(memo.size() <= 163, "memo has more than 164 bytes");
+    eosio_assert(memo.size() <= 159, "memo has more than 159 bytes");
     eosio_assert(nonce > last_nonce, "Nonce must be greater than last nonce. This transaction may already have been relayed.");
     eosio_assert(nonce < last_nonce + 100, "Nonce cannot jump by more than 100");
 
+    // transaction format
+    // bytes    field
+    // 1        version
+    // 1        length
+    // 4        chain_id
+    // 33       from_pubkey
+    // 33       to_pubkey
+    // 8        quantity
+    // 8        fee
+    // 8        nonce
+    // 0-159    memo
     // tx meta fields
-    uint8_t version = 0x01;
-    uint8_t length = 92 + memo.size();
+    uint8_t version = 0x02;
+    uint8_t length = 96 + memo.size();
+    uint32_t chain_id_32 = chain_id & 0xFFFFFFFF;
 
     // construct raw transaction
     uint8_t rawtx[length];
     rawtx[0] = version;
     rawtx[1] = length;
-    memcpy(rawtx + 2, from.data.data(), 33);
-    memcpy(rawtx + 35, to.data.data(), 33);
-    memcpy(rawtx + 68, (uint8_t *)&quantity.amount, 8);
-    memcpy(rawtx + 76, (uint8_t *)&fee.amount, 8);
-    memcpy(rawtx + 84, (uint8_t *)&nonce, 8);
-    memcpy(rawtx + 92, memo.c_str(), memo.size());
+    memcpy(rawtx + 2, (uint8_t *)&chain_id, 4);
+    memcpy(rawtx + 6, from.data.data(), 33);
+    memcpy(rawtx + 39, to.data.data(), 33);
+    memcpy(rawtx + 72, (uint8_t *)&quantity.amount, 8);
+    memcpy(rawtx + 80, (uint8_t *)&fee.amount, 8);
+    memcpy(rawtx + 88, (uint8_t *)&nonce, 8);
+    memcpy(rawtx + 96, memo.c_str(), memo.size());
 
     // hash transaction
     checksum256 digest = sha256((const char *)rawtx, length);
@@ -137,7 +150,7 @@ void pay2key::transfer(
     });
 
     // always subtract the quantity from the sender
-    sub_balance(from, quantity);
+    sub_balance(chain_id, from, quantity);
 
     // Create the public_key object for the WITHDRAW_ADDRESS
     public_key withdraw_key = to;
@@ -163,19 +176,19 @@ void pay2key::transfer(
     }
     // add the balance if it's not a withdrawal
     else {
-        add_balance(to, quantity, relayer_account);
+        add_balance(chain_id, to, quantity, relayer_account);
     }
 
     // update balances with fees
     if (fee.amount > 0) {
-        sub_balance(from, fee);
-        add_balance(relayer, fee, relayer_account);
+        sub_balance(chain_id, from, fee);
+        add_balance(chain_id, relayer, fee, relayer_account);
     }
 
 }
 
-void pay2key::sub_balance(public_key sender, asset value) {
-    accounts from_acts(_self, _self.value);
+void pay2key::sub_balance(uint64_t chain_id, public_key sender, asset value) {
+    accounts from_acts(_self, chain_id);
 
     auto accounts_index = from_acts.get_index<name("bypk")>();
     const auto& from = accounts_index.get(public_key_to_fixed_bytes(sender), "no public key object found");
@@ -190,8 +203,8 @@ void pay2key::sub_balance(public_key sender, asset value) {
     }
 }
 
-void pay2key::add_balance(public_key recipient, asset value, name ram_payer) {
-    accounts to_acts(_self, _self.value);
+void pay2key::add_balance(uint64_t chain_id, public_key recipient, asset value, name ram_payer) {
+    accounts to_acts(_self, chain_id);
 
     auto accounts_index = to_acts.get_index<name("bypk")>();
     auto to = accounts_index.find(public_key_to_fixed_bytes(recipient));
