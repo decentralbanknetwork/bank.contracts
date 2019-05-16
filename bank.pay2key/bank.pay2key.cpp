@@ -52,13 +52,13 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
        s.supply += quantity;
     });
 
-    // convert public key memo to public_key object
-    public_key issue_to;
+    // convert public key memo to bitcoin_address object
+    bitcoin_address issue_to;
     size_t issue_to_len = 37;
     b58tobin((void *)issue_to.data.data(), &issue_to_len, memo.substr(3).c_str());
 
     // validate the checksum
-    public_key issue_to_copy = issue_to;
+    bitcoin_address issue_to_copy = issue_to;
     checksum160 checksum = ripemd160((const char *)issue_to_copy.data.begin(), 33);
     std::array<uint8_t,20> checksum_bytes = checksum.extract_as_byte_array();
     for (int i=0; i<4; i++)
@@ -73,9 +73,9 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
 void pay2key::transfer(
             uint64_t chain_id,
             name relayer_account,
-            public_key relayer,
-            public_key from,
-            public_key to,
+            bitcoin_address relayer,
+            bitcoin_address from,
+            bitcoin_address to,
             asset quantity,
             asset fee,
             uint64_t nonce,
@@ -90,10 +90,21 @@ void pay2key::transfer(
     eosio_assert(st.symbol == quantity.symbol, "quantity and chain_id symbols don't match. check decimal places");
     eosio_assert(st.symbol == fee.symbol, "fee and chain_id symbols don't match. check decimal places");
 
+    // validate addresses
+    validate_bitcoin_address(to);
+    validate_bitcoin_address(from);
+    validate_bitcoin_address(relayer);
+    eosio_assert(from.size() >= 26, "from address must be 26 chars min");
+    eosio_assert(from.size() <= 34, "from address must be 34 chars max");
+    eosio_assert(to.size() >= 26, "to address must be 26 chars min");
+    eosio_assert(to.size() <= 34, "to address must be 34 chars max");
+    eosio_assert(relayer.size() >= 26, "relayer address must be 26 chars min");
+    eosio_assert(relayer.size() <= 34, "relayer address must be 34 chars max");
+
     // get last nonce
     accounts accounts_table(_self, chain_id);
     auto pk_index = accounts_table.get_index<name("bypk")>();
-    auto account_it = pk_index.find(public_key_to_fixed_bytes(from));
+    auto account_it = pk_index.find(bitcoin_address_to_fixed_bytes(from));
     uint64_t last_nonce = 0;
     if (account_it != pk_index.end())
         last_nonce = account_it->last_nonce;
@@ -110,20 +121,24 @@ void pay2key::transfer(
     eosio_assert(nonce > last_nonce, "Nonce must be greater than last nonce. This transaction may already have been relayed.");
     eosio_assert(nonce < last_nonce + 100, "Nonce cannot jump by more than 100");
 
+    // convert bitcoin addreses to binary
+    bitcoin_bin to_bin = bitcoin_address_to_bin(to);
+    bitcoin_bin from_bin = bitcoin_address_to_bin(from);
+
     // transaction format
     // bytes    field
     // 1        version
     // 1        length
     // 4        chain_id
-    // 33       from_pubkey
-    // 33       to_pubkey
+    // 25       from_pubkey
+    // 25       to_pubkey
     // 8        quantity
     // 8        fee
     // 8        nonce
-    // 0-159    memo
+    // 0-175    memo
     // tx meta fields
-    uint8_t version = 0x02;
-    uint8_t length = 96 + memo.size();
+    uint8_t version = 0x03;
+    uint8_t length = 80 + memo.size();
     uint32_t chain_id_32 = chain_id & 0xFFFFFFFF;
 
     // construct raw transaction
@@ -131,12 +146,12 @@ void pay2key::transfer(
     rawtx[0] = version;
     rawtx[1] = length;
     memcpy(rawtx + 2, (uint8_t *)&chain_id, 4);
-    memcpy(rawtx + 6, from.data.data(), 33);
-    memcpy(rawtx + 39, to.data.data(), 33);
-    memcpy(rawtx + 72, (uint8_t *)&quantity.amount, 8);
-    memcpy(rawtx + 80, (uint8_t *)&fee.amount, 8);
-    memcpy(rawtx + 88, (uint8_t *)&nonce, 8);
-    memcpy(rawtx + 96, memo.c_str(), memo.size());
+    memcpy(rawtx + 6, from_bin.data, 25);
+    memcpy(rawtx + 31, to_bin.data, 25);
+    memcpy(rawtx + 56, (uint8_t *)&quantity.amount, 8);
+    memcpy(rawtx + 64, (uint8_t *)&fee.amount, 8);
+    memcpy(rawtx + 72, (uint8_t *)&nonce, 8);
+    memcpy(rawtx + 80, memo.c_str(), memo.size());
 
     // hash transaction
     checksum256 digest = sha256((const char *)rawtx, length);
@@ -152,32 +167,32 @@ void pay2key::transfer(
     // always subtract the quantity from the sender
     sub_balance(chain_id, from, quantity);
 
-    // Create the public_key object for the WITHDRAW_ADDRESS
-    public_key withdraw_key = to;
-    memcpy(withdraw_key.data.data(), WITHDRAW_KEY_BYTES, 33);
+    //// Create the bitcoin_address object for the WITHDRAW_ADDRESS
+    //bitcoin_address withdraw_key = to;
+    //memcpy(withdraw_key.data, WITHDRAW_KEY_BYTES, 25);
 
-    // if the to address is the withdraw address, send an IQ transfer out
-    // and update the circulating supply
-    if (to == withdraw_key) {
-        asset eos_quantity = quantity;
-        eos_quantity.symbol = EOS_SYMBOL;
-        name withdraw_account = name(memo);
-        action(
-            permission_level{ _self , name("active") },
-            name("everipediaiq") , name("transfer"),
-            std::make_tuple( _self, withdraw_account, eos_quantity, std::string("withdraw EOS from UTXO"))
-        ).send();
+    //// if the to address is the withdraw address, send an IQ transfer out
+    //// and update the circulating supply
+    //if (to == withdraw_key) {
+    //    asset eos_quantity = quantity;
+    //    eos_quantity.symbol = EOS_SYMBOL;
+    //    name withdraw_account = name(memo);
+    //    action(
+    //        permission_level{ _self , name("active") },
+    //        name("everipediaiq") , name("transfer"),
+    //        std::make_tuple( _self, withdraw_account, eos_quantity, std::string("withdraw EOS from UTXO"))
+    //    ).send();
 
-        stats statstable(_self, quantity.symbol.raw());
-        auto& supply_it = statstable.get(quantity.symbol.raw(), "UTXO symbol is missing. Create it first");
-        statstable.modify(supply_it, _self, [&](auto& s) {
-           s.supply -= quantity;
-        });
-    }
-    // add the balance if it's not a withdrawal
-    else {
+    //    stats statstable(_self, quantity.symbol.raw());
+    //    auto& supply_it = statstable.get(quantity.symbol.raw(), "UTXO symbol is missing. Create it first");
+    //    statstable.modify(supply_it, _self, [&](auto& s) {
+    //       s.supply -= quantity;
+    //    });
+    //}
+    //// add the balance if it's not a withdrawal
+    //else {
         add_balance(chain_id, to, quantity, relayer_account);
-    }
+    //}
 
     // update balances with fees
     if (fee.amount > 0) {
@@ -187,11 +202,11 @@ void pay2key::transfer(
 
 }
 
-void pay2key::sub_balance(uint64_t chain_id, public_key sender, asset value) {
+void pay2key::sub_balance(uint64_t chain_id, bitcoin_address sender, asset value) {
     accounts from_acts(_self, chain_id);
 
     auto accounts_index = from_acts.get_index<name("bypk")>();
-    const auto& from = accounts_index.get(public_key_to_fixed_bytes(sender), "no public key object found");
+    const auto& from = accounts_index.get(bitcoin_address_to_fixed_bytes(sender), "no public key object found");
     eosio_assert(from.balance.amount >= value.amount, "overdrawn balance");
 
     if (from.balance.amount == value.amount) {
@@ -203,11 +218,11 @@ void pay2key::sub_balance(uint64_t chain_id, public_key sender, asset value) {
     }
 }
 
-void pay2key::add_balance(uint64_t chain_id, public_key recipient, asset value, name ram_payer) {
+void pay2key::add_balance(uint64_t chain_id, bitcoin_address recipient, asset value, name ram_payer) {
     accounts to_acts(_self, chain_id);
 
     auto accounts_index = to_acts.get_index<name("bypk")>();
-    auto to = accounts_index.find(public_key_to_fixed_bytes(recipient));
+    auto to = accounts_index.find(bitcoin_address_to_fixed_bytes(recipient));
 
     if (to == accounts_index.end()) {
         to_acts.emplace(ram_payer, [&]( auto& a ){
@@ -221,6 +236,28 @@ void pay2key::add_balance(uint64_t chain_id, public_key recipient, asset value, 
             a.balance += value;
         });
     }
+}
+
+void validate_bitcoin_address(bitcoin_address address) {
+    eosio_assert(address.size() >= 26, "address must be 26 chars min");
+    eosio_assert(address.size() <= 34, "address must be 34 chars max");
+    bitcoin_bin address_bin = bitcoin_address_to_bin(address, &address_bytes);
+    char bytes_base[21];
+    memcpy(bytes_base, address_bin.data, 21);
+    checksum256 check_mid = sha256((const char *)address_base, 21);
+    checksum256 fullcheck = sha256((const char *)check_mid.data, 32);
+    char checksum[4];
+    memcpy(checksum, fullcheck.data, 4);
+    for (int i=0; i < 4; i++) {
+        eosio_assert(checksum[i] == address_bin.data[21 + i], "bitcoin address checksum does not validate");
+    }
+}
+
+// binptr must be a pointer to a char array of length 25
+bitcoin_bin bitcoin_address_to_bin(bitcoin_address address) {
+    char bin[25];
+    size_t binlen = 25;
+    b58tobin((void *)bin, &binlen, address.c_str());
 }
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)

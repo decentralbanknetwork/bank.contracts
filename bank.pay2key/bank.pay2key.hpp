@@ -7,15 +7,28 @@
 using namespace eosio;
 using namespace std;
 
-const eosio::symbol EOS_SYMBOL = symbol(symbol_code("EOS"), 4);
-const std::string WITHDRAW_ADDRESS = "EOS1111111111111111111111111111111114T1Anm";
-uint8_t WITHDRAW_KEY_BYTES[37] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 134, 231, 181, 34 };
+const eosio::symbol BTC_SYMBOL = symbol(symbol_code("BTC"), 4);
+const std::string WITHDRAW_ADDRESS = "1111111111111111111114oLvT2";
+uint8_t WITHDRAW_KEY_BYTES[25] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 148, 160, 9, 17 };
+
+typedef string bitcoin_address;
+struct bitcoin_bin {
+    char data[25];
+
+    std::string to_string()const {
+        return std::string("hello");
+    }
+    void print()const {
+        eosio::print(to_string());
+    }
+
+};
 
 class [[eosio::contract("bank.pay2key")]] pay2key : public contract {
 
 public:
     using contract::contract;
-    
+
     [[eosio::action]]
     void create(name token_contract, symbol ticker);
 
@@ -23,9 +36,9 @@ public:
     void transfer(
                 uint64_t chain_id,
                 name relayer_account,
-                public_key relayer,
-                public_key from,
-                public_key to,
+                bitcoin_address relayer,
+                bitcoin_address from,
+                bitcoin_address to,
                 asset amount,
                 asset fee,
                 uint64_t nonce,
@@ -38,13 +51,13 @@ public:
 
     struct [[eosio::table]] account {
       uint64_t key;
-      public_key publickey;
+      bitcoin_address publickey;
       asset balance;
       uint64_t last_nonce;
 
       uint64_t primary_key() const { return key; }
       fixed_bytes<32> bypk() const {
-        return public_key_to_fixed_bytes(publickey);
+        return bitcoin_address_to_fixed_bytes(publickey);
       };
     };
 
@@ -71,13 +84,13 @@ public:
 
   private:
 
-    static fixed_bytes<32> public_key_to_fixed_bytes(const public_key publickey) {
-        return sha256(publickey.data.begin(), 33);
+    static fixed_bytes<32> bitcoin_address_to_fixed_bytes(bitcoin_address address) {
+        return sha256(address.c_str(), address.size());
     }
 
-    void sub_balance(uint64_t chain_id, public_key sender, asset value);
+    void sub_balance(uint64_t chain_id, bitcoin_address sender, asset value);
 
-    void add_balance(uint64_t chain_id, public_key recipient, asset value, name ram_payer);
+    void add_balance(uint64_t chain_id, bitcoin_address recipient, asset value, name ram_payer);
 
     static uint128_t merge_contract_symbol( name contract, symbol sym ) {
         uint128_t merged;
