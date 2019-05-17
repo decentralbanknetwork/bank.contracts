@@ -1,6 +1,18 @@
 #include "bank.pay2key.hpp"
 #include "base58.c"
 
+std::string bytetohex(unsigned char *data, int len) {
+    constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    std::string s(len * 2, ' ');
+    for (int i = 0; i < len; ++i) {
+        s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+        s[2 * i + 1] = hexmap[data[i] & 0x0F];
+    }
+    return s;
+}
+
 [[eosio::action]]
 void pay2key::create(name token_contract, symbol ticker) {
     require_auth( _self );
@@ -263,7 +275,8 @@ bitcoin_address pay2key::public_key_to_bitcoin_address (public_key key) {
     // last 4 bytes are checksum
     checksum256 check_mid = sha256((const char *)&address_bin.data, 21);
     checksum256 fullcheck = sha256((const char *)check_mid.extract_as_byte_array().begin(), 32);
-    memcpy(address_bin.data, fullcheck.extract_as_byte_array().begin(), 4);
+    memcpy(address_bin.data + 21, fullcheck.extract_as_byte_array().begin(), 4);
+    print(bytetohex((unsigned char *)address_bin.data, 25).c_str());
 
     // base58 encode to get the address
     size_t num_chars = 35;

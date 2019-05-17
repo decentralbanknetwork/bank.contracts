@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri May 17 14:06:03 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri May 17 15:55:26 2019",
     "version": "eosio::abi/1.1",
     "structs": [
         {
@@ -127,7 +127,7 @@
     ],
     "tables": [
         {
-            "name": "accounts",
+            "name": "btcaccounts",
             "type": "account",
             "index_type": "i64",
             "key_names": [],

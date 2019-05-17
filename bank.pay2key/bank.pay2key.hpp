@@ -72,7 +72,7 @@ public:
         uint128_t by_contract_symbol() const { return merge_contract_symbol(token_contract, symbol); }
     };
 
-    typedef eosio::multi_index<"accounts"_n,
+    typedef eosio::multi_index<"btcaccounts"_n,
                                account,
                                indexed_by<"bypk"_n, const_mem_fun<account, fixed_bytes<32>, &account::bypk>>
                               > accounts;

@@ -16,12 +16,12 @@ function uint32_to_little_endian(num) {
 }
 
 function sign(chain_id, from, to, amount, fee, nonce, memo, privkey) {
-  const version = 2;
-  const length = 96 + memo.length;
+  const version = 3;
+  const length = 80 + memo.length;
 
   const chainidBuf = uint32_to_little_endian(chain_id);
-  const pkeyFrom = base58.decode(from.substring(3));
-  const pkeyTo = base58.decode(to.substring(3));
+  const pkeyFrom = base58.decode(from);
+  const pkeyTo = base58.decode(to);
   const amountBuf = uint64_to_little_endian(amount);
   const feeBuf = uint64_to_little_endian(fee);
   const nonceBuf = uint64_to_little_endian(nonce);
@@ -32,12 +32,12 @@ function sign(chain_id, from, to, amount, fee, nonce, memo, privkey) {
   buffer[0] = version;
   buffer[1] = length;
   chainidBuf.copy(buffer, 2, 0, 4);
-  pkeyFrom.copy(buffer, 6, 0, 33);
-  pkeyTo.copy(buffer, 39, 0, 33);
-  amountBuf.copy(buffer, 72, 0, 8);
-  feeBuf.copy(buffer, 80, 0, 8);
-  nonceBuf.copy(buffer, 88, 0, 8);
-  memoBuf.copy(buffer, 96, 0, memoBuf.length);
+  pkeyFrom.copy(buffer, 6, 0, 25);
+  pkeyTo.copy(buffer, 31, 0, 25);
+  amountBuf.copy(buffer, 56, 0, 8);
+  feeBuf.copy(buffer, 64, 0, 8);
+  nonceBuf.copy(buffer, 72, 0, 8);
+  memoBuf.copy(buffer, 80, 0, memoBuf.length);
   //console.log(buffer.toString('hex'));
 
   // hash raw tx
@@ -55,7 +55,7 @@ function sign(chain_id, from, to, amount, fee, nonce, memo, privkey) {
 if (process.argv.length != 10) {
     console.log(`
         USAGE: node pay2key.sign.js [chain_id] [from] [to] [amount] [fee] [nonce] [memo] [privkey]
-        Example: node sign.js 0 EOS7PoGq46ssqeGh8ZNScWQxqbwg5RNvLAwVw3i5dQcZ3a1h9nRyr EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt 10000 10 1 "token transfer" 5KQRA6BBHEHSbmvio3S9oFfVERvv79XXppmYExMouSBqPkZTD79
+        Example: node pay2key.sign.js 0 1GkVXJKuphYRpGeSbjxWSD4S4kyPjvS5oh 15HQkwuxBnQgPzG3UMtoz7qMrNw7B3uKax 10000 10 1 "token transfer" 5JzQSvpmLHTvF3HDdfzaD8WMLFpWjBobCCy8qYwivcrzq1SdATW
     `);
 }
 else {

@@ -14,10 +14,10 @@ assert ()
     fi
 }
 
-PRIVKEY1="5JW2ZpYaHA96yEpDXW1arVmEezV3XPF6aD2b7BB5EyGUEapdUTL"
-PUBKEY1="EOS6u25uWXi52QLp1FurM8KPDJydbvxbrPM2XNrYPz7vPCQuGFCer"
-PRIVKEY2="5KRKuMUFswLXmeA9wzWvn6f9a9fNH36oGkVG29X2VGpbMPCJ3eC"
-PUBKEY2="EOS6wh7kToXbq6rt92bFVFz2mj9AcJf8NEFK3sFfYk78QTnEGAiBp"
+PRIVKEY1="5KQicGMZkZpzsgxUpzNAWAHR8FUKEq2kxAgMNDkaTZugMEYt3FM"
+PUBKEY1="1FyoJ7xbfECbKAoxRgGHqNz5hpNSJY7edc"
+PRIVKEY2="5JtGdsayiwpVQ9Z8X5BiDcPrvEQzopppd72bTNBskqMtcmpCpDj"
+PUBKEY2="15HQkwuxBnQgPzG3UMtoz7qMrNw7B3uKax"
 
 echo -e "${CYAN}-----------------------DEPLOY CONTRACT-----------------------${NC}"
 cleos set contract bank.pay2key ../bank.pay2key/
@@ -33,7 +33,7 @@ cleos push action everipediaiq transfer "[\"dcbtestuserb\", \"bank.pay2key\", \"
 assert $(bc <<< "$? == 0")
 
 echo -e "${CYAN}-----------------------TRANSFER TOKENS-----------------------${NC}"
-NONCE1=$(cleos get table bank.pay2key 0 accounts | jq ".rows[0].last_nonce")
+NONCE1=$(cleos get table bank.pay2key 0 btcaccounts | jq ".rows[0].last_nonce")
 NONCE1=$(echo "$NONCE1 + 1" | bc)
 MEMO1="BANK transfer"
 CHAIN1=0
@@ -41,7 +41,7 @@ SIG1=$(node pay2key.sign.js $CHAIN1 $PUBKEY1 $PUBKEY2 10000 10 $NONCE1 "$MEMO1" 
 cleos push action bank.pay2key transfer "[$CHAIN1, \"dcbtestusera\", \"$PUBKEY1\", \"$PUBKEY1\", \"$PUBKEY2\", \"1.0000 BANK\", \"0.0010 BANK\", $NONCE1, \"$MEMO1\", \"$SIG1\"]" -p dcbtestusera
 assert $(bc <<< "$? == 0")
 
-NONCE2=$(cleos get table bank.pay2key 1 accounts | jq ".rows[0].last_nonce")
+NONCE2=$(cleos get table bank.pay2key 1 btcaccounts | jq ".rows[0].last_nonce")
 NONCE2=$(echo "$NONCE1 + 1" | bc)
 MEMO2="IQ transfer"
 CHAIN2=1
