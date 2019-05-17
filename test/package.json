@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "bs58": "^4.0.1",
-    "eosjs-ecc": "^4.0.4"
+    "eosjs-ecc": "^4.0.4",
+    "ripemd160": "^2.0.2"
   }
 }
