@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Mon May 13 12:46:31 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Fri May 17 14:06:03 2019",
     "version": "eosio::abi/1.1",
     "structs": [
         {
@@ -12,7 +12,7 @@
                 },
                 {
                     "name": "publickey",
-                    "type": "public_key"
+                    "type": "bitcoin_address"
                 },
                 {
                     "name": "balance",
@@ -74,15 +74,15 @@
                 },
                 {
                     "name": "relayer",
-                    "type": "public_key"
+                    "type": "bitcoin_address"
                 },
                 {
                     "name": "from",
-                    "type": "public_key"
+                    "type": "bitcoin_address"
                 },
                 {
                     "name": "to",
-                    "type": "public_key"
+                    "type": "bitcoin_address"
                 },
                 {
                     "name": "amount",
@@ -107,7 +107,12 @@
             ]
         }
     ],
-    "types": [],
+    "types": [
+        {
+            "new_type_name": "bitcoin_address",
+            "type": "string"
+        }
+    ],
     "actions": [
         {
             "name": "create",

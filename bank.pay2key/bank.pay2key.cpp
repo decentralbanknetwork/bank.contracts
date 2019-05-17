@@ -27,9 +27,9 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
     if (from == _self) return; // sending tokens, ignore
 
     auto symbol = quantity.symbol;
+    std::string issue_to = memo;
+    validate_bitcoin_address(issue_to);
     eosio_assert(symbol.is_valid(), "invalid symbol name");
-    eosio_assert(memo.size() == 53, "memo must be a 53-char EOS public key");
-    eosio_assert(memo.substr(0,3) == "EOS", "public key must start with EOS");
     eosio_assert(to == _self, "stop trying to hack the contract");
 
     // make sure contract and symbol are accepted by contract
@@ -51,18 +51,6 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
     statstable.modify(st, _self, [&](auto& s) {
        s.supply += quantity;
     });
-
-    // convert public key memo to bitcoin_address object
-    bitcoin_address issue_to;
-    size_t issue_to_len = 37;
-    b58tobin((void *)issue_to.data.data(), &issue_to_len, memo.substr(3).c_str());
-
-    // validate the checksum
-    bitcoin_address issue_to_copy = issue_to;
-    checksum160 checksum = ripemd160((const char *)issue_to_copy.data.begin(), 33);
-    std::array<uint8_t,20> checksum_bytes = checksum.extract_as_byte_array();
-    for (int i=0; i<4; i++)
-        eosio_assert(checksum_bytes[i] == (uint8_t)issue_to.data[33+i], "invalid public key in memo: checksum does not validate");
 
     // Cannot charge RAM to other accounts during notify
     // This is a major issue. How can we get the sender to pay for their own RAM?
@@ -157,7 +145,9 @@ void pay2key::transfer(
     checksum256 digest = sha256((const char *)rawtx, length);
 
     // verify signature
-    assert_recover_key(digest, sig, from);
+    public_key recovered_key = recover_key(digest, sig);
+    bitcoin_address recovered_address = public_key_to_bitcoin_address(recovered_key);
+    eosio_assert(recovered_address == from, "Recovered address from signature was different than from address");
 
     // update last nonce
     pk_index.modify(account_it, _self, [&]( auto& n ){
@@ -238,26 +228,51 @@ void pay2key::add_balance(uint64_t chain_id, bitcoin_address recipient, asset va
     }
 }
 
-void validate_bitcoin_address(bitcoin_address address) {
+void pay2key::validate_bitcoin_address(bitcoin_address address) {
     eosio_assert(address.size() >= 26, "address must be 26 chars min");
     eosio_assert(address.size() <= 34, "address must be 34 chars max");
-    bitcoin_bin address_bin = bitcoin_address_to_bin(address, &address_bytes);
-    char bytes_base[21];
-    memcpy(bytes_base, address_bin.data, 21);
-    checksum256 check_mid = sha256((const char *)address_base, 21);
-    checksum256 fullcheck = sha256((const char *)check_mid.data, 32);
+    bitcoin_bin address_bin = bitcoin_address_to_bin(address);
+    char address_base[21];
+    memcpy(address_base, address_bin.data, 21);
+    checksum256 check_mid = sha256((const char *)&address_base, 21);
+    checksum256 fullcheck = sha256((const char *)check_mid.extract_as_byte_array().begin(), 32);
     char checksum[4];
-    memcpy(checksum, fullcheck.data, 4);
+    memcpy(checksum, fullcheck.extract_as_byte_array().begin(), 4);
     for (int i=0; i < 4; i++) {
         eosio_assert(checksum[i] == address_bin.data[21 + i], "bitcoin address checksum does not validate");
     }
 }
 
-// binptr must be a pointer to a char array of length 25
-bitcoin_bin bitcoin_address_to_bin(bitcoin_address address) {
-    char bin[25];
+bitcoin_bin pay2key::bitcoin_address_to_bin(bitcoin_address address) {
+    bitcoin_bin bin;
     size_t binlen = 25;
-    b58tobin((void *)bin, &binlen, address.c_str());
+    b58tobin((void *)bin.data, &binlen, address.c_str());
+    return bin;
+}
+
+bitcoin_address pay2key::public_key_to_bitcoin_address (public_key key) {
+    checksum256 hashkey1 = sha256(key.data.begin(), 33);
+    checksum160 hashkey2 = ripemd160((const char *)hashkey1.extract_as_byte_array().begin(), 32);
+
+    // first byte is 0x00
+    // next 20 bytes are ripemd160 hash
+    bitcoin_bin address_bin;
+    address_bin.data[0] = 0;
+    memcpy(address_bin.data + 1, hashkey2.extract_as_byte_array().begin(), 20);
+
+    // last 4 bytes are checksum
+    checksum256 check_mid = sha256((const char *)&address_bin.data, 21);
+    checksum256 fullcheck = sha256((const char *)check_mid.extract_as_byte_array().begin(), 32);
+    memcpy(address_bin.data, fullcheck.extract_as_byte_array().begin(), 4);
+
+    // base58 encode to get the address
+    size_t num_chars = 35;
+    char address_chars[num_chars];
+    b58enc(address_chars, &num_chars, (const uint8_t *)address_bin.data, 25);
+    address_chars[num_chars] = '\0';
+    bitcoin_address address = std::string(address_chars);
+
+    return address;
 }
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)

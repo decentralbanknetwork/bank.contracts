@@ -100,4 +100,10 @@ public:
         return merged;
     }
 
+    bitcoin_bin bitcoin_address_to_bin(bitcoin_address address);
+
+    void validate_bitcoin_address(bitcoin_address address);
+
+    bitcoin_address public_key_to_bitcoin_address (public_key key);
+
 };
