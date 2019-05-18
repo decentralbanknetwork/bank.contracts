@@ -169,32 +169,25 @@ void pay2key::transfer(
     // always subtract the quantity from the sender
     sub_balance(chain_id, from, quantity);
 
-    //// Create the bitcoin_address object for the WITHDRAW_ADDRESS
-    //bitcoin_address withdraw_key = to;
-    //memcpy(withdraw_key.data, WITHDRAW_KEY_BYTES, 25);
+    // if the to address is the withdraw address, send an IQ transfer out
+    // and update the circulating supply
+    if (to == WITHDRAW_ADDRESS) {
+        name withdraw_account = name(memo);
+        action(
+            permission_level{ _self , name("active") },
+            st.token_contract , name("transfer"),
+            std::make_tuple( _self, withdraw_account, quantity, std::string("withdraw EOS from UTXO"))
+        ).send();
 
-    //// if the to address is the withdraw address, send an IQ transfer out
-    //// and update the circulating supply
-    //if (to == withdraw_key) {
-    //    asset eos_quantity = quantity;
-    //    eos_quantity.symbol = EOS_SYMBOL;
-    //    name withdraw_account = name(memo);
-    //    action(
-    //        permission_level{ _self , name("active") },
-    //        name("everipediaiq") , name("transfer"),
-    //        std::make_tuple( _self, withdraw_account, eos_quantity, std::string("withdraw EOS from UTXO"))
-    //    ).send();
-
-    //    stats statstable(_self, quantity.symbol.raw());
-    //    auto& supply_it = statstable.get(quantity.symbol.raw(), "UTXO symbol is missing. Create it first");
-    //    statstable.modify(supply_it, _self, [&](auto& s) {
-    //       s.supply -= quantity;
-    //    });
-    //}
-    //// add the balance if it's not a withdrawal
-    //else {
+        auto st = statstable.find(chain_id);
+        statstable.modify(st, _self, [&](auto& s) {
+           s.supply -= quantity;
+        });
+    }
+    // add the balance if it's not a withdrawal
+    else {
         add_balance(chain_id, to, quantity, relayer_account);
-    //}
+    }
 
     // update balances with fees
     if (fee.amount > 0) {

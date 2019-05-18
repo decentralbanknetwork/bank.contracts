@@ -7,21 +7,12 @@
 using namespace eosio;
 using namespace std;
 
-const eosio::symbol BTC_SYMBOL = symbol(symbol_code("BTC"), 4);
 const std::string WITHDRAW_ADDRESS = "1111111111111111111114oLvT2";
 uint8_t WITHDRAW_KEY_BYTES[25] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 148, 160, 9, 17 };
 
 typedef string bitcoin_address;
 struct bitcoin_bin {
     char data[25];
-
-    std::string to_string()const {
-        return std::string("hello");
-    }
-    void print()const {
-        eosio::print(to_string());
-    }
-
 };
 
 class [[eosio::contract("bank.pay2key")]] pay2key : public contract {
