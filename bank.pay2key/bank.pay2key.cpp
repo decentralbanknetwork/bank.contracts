@@ -157,9 +157,18 @@ void pay2key::transfer(
     checksum256 digest = sha256((const char *)rawtx, length);
 
     // verify signature
-    public_key recovered_key = recover_key(digest, sig);
-    bitcoin_address recovered_address = public_key_to_bitcoin_address(recovered_key);
-    eosio_assert(recovered_address == from, "Recovered address from signature was different than from address");
+    // try both the compressed and uncompressed keys
+    // if neither match, throw an error
+    public_key compressed_key = recover_key(digest, sig);
+    bitcoin_address compressed_address = public_key_to_bitcoin_address(compressed_key);
+    bitcoin_address uncompressed_address;
+    if (compressed_address != from) {
+        uint8_t uncompressed_key[65];
+        uncompressed_key[0] = 0x04; // identifier for uncompressed key
+        uECC_decompress((uint8_t *)compressed_key.data.begin(), uncompressed_key + 1, uECC_secp256k1());
+        uncompressed_address = public_key_to_bitcoin_address((const char *)uncompressed_key);
+    }
+    eosio_assert(compressed_address == from || uncompressed_address == from, "Recovered signature address was different than provided address. Either the wrong key or mismatched message information was used");
 
     // update last nonce
     pk_index.modify(account_it, _self, [&]( auto& n ){
@@ -255,21 +264,31 @@ bitcoin_bin pay2key::bitcoin_address_to_bin(bitcoin_address address) {
     return bin;
 }
 
+// convert compressed public key to bitcoin address
 bitcoin_address pay2key::public_key_to_bitcoin_address (public_key key) {
     checksum256 hashkey1 = sha256(key.data.begin(), 33);
     checksum160 hashkey2 = ripemd160((const char *)hashkey1.extract_as_byte_array().begin(), 32);
+    return hashed_key_to_bitcoin_address(hashkey2);
+}
 
+// convert uncompressed public key to bitcoin address
+bitcoin_address pay2key::public_key_to_bitcoin_address (const char * key) {
+    checksum256 hashkey1 = sha256(key, 65);
+    checksum160 hashkey2 = ripemd160((const char *)hashkey1.extract_as_byte_array().begin(), 32);
+    return hashed_key_to_bitcoin_address(hashkey2);
+}
+
+bitcoin_address pay2key::hashed_key_to_bitcoin_address (checksum160 hashed) {
     // first byte is 0x00
     // next 20 bytes are ripemd160 hash
     bitcoin_bin address_bin;
     address_bin.data[0] = 0;
-    memcpy(address_bin.data + 1, hashkey2.extract_as_byte_array().begin(), 20);
+    memcpy(address_bin.data + 1, hashed.extract_as_byte_array().begin(), 20);
 
     // last 4 bytes are checksum
     checksum256 check_mid = sha256((const char *)&address_bin.data, 21);
     checksum256 fullcheck = sha256((const char *)check_mid.extract_as_byte_array().begin(), 32);
     memcpy(address_bin.data + 21, fullcheck.extract_as_byte_array().begin(), 4);
-    print(bytetohex((unsigned char *)address_bin.data, 25).c_str());
 
     // base58 encode to get the address
     size_t num_chars = 35;

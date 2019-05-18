@@ -15,9 +15,9 @@ assert ()
 }
 
 PRIVKEY1="5Jce6dWWPCP7BdrpfZjMk2mhELB7T2jg5nMg7cw9Ga9qMwYtEuu"
-PUBKEY1="12AuUR22Qkf3JAHbdnt3fSN7Jp7f7fRqz9"
-PRIVKEY2="5J8HVRcSJRyLwnRf3pf9k2nJmW6H3gGYnt5LTpYiqMPDDDLDRzr"
-PUBKEY2="14ZazbAfEiYVYMn8xpRFbRFMU4UNQjVyGv"
+PUBKEY1="12AuUR22Qkf3JAHbdnt3fSN7Jp7f7fRqz9" #compressed
+PRIVKEY2="5JuHN27YsJktraQYGgLeihxZ2bwQbFANFdpc8gtDgqyyJsZJQB6"
+PUBKEY2="1EPBdzFLGCkVaXTEVR3LCLaQ5fECFz4yh9" # uncompressed
 WITHDRAW_PUBKEY="1111111111111111111114oLvT2"
 
 echo -e "${CYAN}-----------------------DEPLOY CONTRACT-----------------------${NC}"
@@ -42,7 +42,7 @@ SIG1=$(node pay2key.sign.js $CHAIN1 $PUBKEY1 $PUBKEY2 10000 10 $NONCE1 "$MEMO1" 
 cleos push action bank.pay2key transfer "[$CHAIN1, \"dcbtestusera\", \"$PUBKEY1\", \"$PUBKEY1\", \"$PUBKEY2\", \"1.0000 BANK\", \"0.0010 BANK\", $NONCE1, \"$MEMO1\", \"$SIG1\"]" -p dcbtestusera
 assert $(bc <<< "$? == 0")
 
-NONCE2=$(cleos get table bank.pay2key 1 btcaccounts | jq ".rows[0].last_nonce")
+NONCE2=$(cleos get table bank.pay2key 1 btcaccounts | jq ".rows[] | select(.publickey == \"$PUBKEY2\") | .last_nonce")
 NONCE2=$(echo "$NONCE2 + 1" | bc)
 MEMO2="IQ transfer"
 CHAIN2=1

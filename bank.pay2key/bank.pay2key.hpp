@@ -3,6 +3,7 @@
 #include <eosiolib/types.h>
 #include <eosiolib/crypto.h>
 #include <eosiolib/asset.hpp>
+#include "ecc/uECC.c"
 
 using namespace eosio;
 using namespace std;
@@ -97,4 +98,7 @@ public:
 
     bitcoin_address public_key_to_bitcoin_address (public_key key);
 
+    bitcoin_address public_key_to_bitcoin_address (const char * key);
+
+    bitcoin_address hashed_key_to_bitcoin_address (checksum160 hashed);
 };
