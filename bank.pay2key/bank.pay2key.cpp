@@ -44,11 +44,11 @@ void pay2key::issue( name from, name to, asset quantity, string memo ) {
     eosio_assert(quantity.is_valid(), "invalid quantity");
     eosio_assert(quantity.amount > 0, "must issue positive quantity");
 
-    // TODO: ensure EOS balance is enough to cover UTXO issuance
+    // TODO: ensure token balance is enough to cover UTXO issuance
     // This will always be true unless the contract has been hacked
     // so it is mostly a sanity check
 
-    statstable.modify(st, _self, [&](auto& s) {
+    statstable.modify(st, same_payer, [&](auto& s) {
        s.supply += quantity;
     });
 
@@ -145,7 +145,7 @@ void pay2key::transfer(
     assert_recover_key(digest, sig, from);
 
     // update last nonce
-    pk_index.modify(account_it, _self, [&]( auto& n ){
+    pk_index.modify(account_it, same_payer, [&]( auto& n ){
         n.last_nonce = nonce;
     });
 
@@ -159,18 +159,15 @@ void pay2key::transfer(
     // if the to address is the withdraw address, send an IQ transfer out
     // and update the circulating supply
     if (to == withdraw_key) {
-        asset eos_quantity = quantity;
-        eos_quantity.symbol = EOS_SYMBOL;
         name withdraw_account = name(memo);
         action(
             permission_level{ _self , name("active") },
-            name("everipediaiq") , name("transfer"),
-            std::make_tuple( _self, withdraw_account, eos_quantity, std::string("withdraw EOS from UTXO"))
+            st.token_contract , name("transfer"),
+            std::make_tuple( _self, withdraw_account, quantity, std::string("withdraw from UTXO"))
         ).send();
 
-        stats statstable(_self, quantity.symbol.raw());
-        auto& supply_it = statstable.get(quantity.symbol.raw(), "UTXO symbol is missing. Create it first");
-        statstable.modify(supply_it, _self, [&](auto& s) {
+        auto st = statstable.find(chain_id);
+        statstable.modify(st, same_payer, [&](auto& s) {
            s.supply -= quantity;
         });
     }
@@ -197,7 +194,7 @@ void pay2key::sub_balance(uint64_t chain_id, public_key sender, asset value) {
     if (from.balance.amount == value.amount) {
         from_acts.erase(from);
     } else {
-        from_acts.modify(from, _self, [&]( auto& a ) {
+        from_acts.modify(from, same_payer, [&]( auto& a ) {
             a.balance -= value;
         });
     }
@@ -217,7 +214,7 @@ void pay2key::add_balance(uint64_t chain_id, public_key recipient, asset value, 
             a.last_nonce = 0;
         });
     } else {
-        accounts_index.modify(to, _self, [&]( auto& a ) {
+        accounts_index.modify(to, same_payer, [&]( auto& a ) {
             a.balance += value;
         });
     }

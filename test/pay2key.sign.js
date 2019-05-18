@@ -55,7 +55,7 @@ function sign(chain_id, from, to, amount, fee, nonce, memo, privkey) {
 if (process.argv.length != 10) {
     console.log(`
         USAGE: node pay2key.sign.js [chain_id] [from] [to] [amount] [fee] [nonce] [memo] [privkey]
-        Example: node sign.js 0 EOS7PoGq46ssqeGh8ZNScWQxqbwg5RNvLAwVw3i5dQcZ3a1h9nRyr EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt 10000 10 1 "token transfer" 5KQRA6BBHEHSbmvio3S9oFfVERvv79XXppmYExMouSBqPkZTD79
+        Example: node pay2key.sign.js 0 EOS7PoGq46ssqeGh8ZNScWQxqbwg5RNvLAwVw3i5dQcZ3a1h9nRyr EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQDpqc7NZ4F7zTQh4Wt 10000 10 1 "token transfer" 5KQRA6BBHEHSbmvio3S9oFfVERvv79XXppmYExMouSBqPkZTD79
     `);
 }
 else {
