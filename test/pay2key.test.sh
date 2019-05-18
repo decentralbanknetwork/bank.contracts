@@ -14,10 +14,10 @@ assert ()
     fi
 }
 
-PRIVKEY1="5Kktka2wXumUWvQti6AXXiFAJtr8UDEtaCp91i9SVnAHwZKuaxs"
-PUBKEY1="1PMycacnJaSqwwJqjawXBErnLsZ7RkXUAs"
-PRIVKEY2="5JtGdsayiwpVQ9Z8X5BiDcPrvEQzopppd72bTNBskqMtcmpCpDj"
-PUBKEY2="15HQkwuxBnQgPzG3UMtoz7qMrNw7B3uKax"
+PRIVKEY1="5Jce6dWWPCP7BdrpfZjMk2mhELB7T2jg5nMg7cw9Ga9qMwYtEuu"
+PUBKEY1="12AuUR22Qkf3JAHbdnt3fSN7Jp7f7fRqz9"
+PRIVKEY2="5J8HVRcSJRyLwnRf3pf9k2nJmW6H3gGYnt5LTpYiqMPDDDLDRzr"
+PUBKEY2="14ZazbAfEiYVYMn8xpRFbRFMU4UNQjVyGv"
 
 echo -e "${CYAN}-----------------------DEPLOY CONTRACT-----------------------${NC}"
 cleos set contract bank.pay2key ../bank.pay2key/
