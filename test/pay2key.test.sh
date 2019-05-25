@@ -24,8 +24,8 @@ echo -e "${CYAN}-----------------------DEPLOY CONTRACT-----------------------${N
 cleos set contract bank.pay2key ../bank.pay2key/
 
 echo -e "${CYAN}-----------------------CREATE TOKENS-----------------------${NC}"
-cleos push action bank.pay2key create '["eosio.token", "4,BANK", 1]' -p bank.pay2key
-cleos push action bank.pay2key create '["everipediaiq", "3,IQ", 2]' -p bank.pay2key
+cleos push action bank.pay2key create '["eosio.token", "4,BANK"]' -p bank.pay2key
+cleos push action bank.pay2key create '["everipediaiq", "3,IQ"]' -p bank.pay2key
 
 echo -e "${CYAN}-----------------------DEPOSIT TOKENS-----------------------${NC}"
 cleos transfer dcbtestusera bank.pay2key "100 BANK" "$PUBKEY1"
