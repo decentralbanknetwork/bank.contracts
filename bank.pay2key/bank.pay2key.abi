@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Mar  6 21:52:55 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Sat May 18 16:16:11 2019",
     "version": "eosio::abi/1.1",
     "structs": [
         {
@@ -29,12 +29,12 @@
             "base": "",
             "fields": [
                 {
-                    "name": "issuer",
+                    "name": "token_contract",
                     "type": "name"
                 },
                 {
-                    "name": "maximum_supply",
-                    "type": "asset"
+                    "name": "ticker",
+                    "type": "symbol"
                 }
             ]
         },
@@ -43,16 +43,20 @@
             "base": "",
             "fields": [
                 {
+                    "name": "chain_id",
+                    "type": "uint64"
+                },
+                {
                     "name": "supply",
                     "type": "asset"
                 },
                 {
-                    "name": "max_supply",
-                    "type": "asset"
+                    "name": "token_contract",
+                    "type": "name"
                 },
                 {
-                    "name": "issuer",
-                    "type": "name"
+                    "name": "symbol",
+                    "type": "symbol"
                 }
             ]
         },
@@ -60,6 +64,14 @@
             "name": "transfer",
             "base": "",
             "fields": [
+                {
+                    "name": "chain_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "relayer_account",
+                    "type": "name"
+                },
                 {
                     "name": "relayer",
                     "type": "public_key"
@@ -113,15 +125,15 @@
             "name": "accounts",
             "type": "account",
             "index_type": "i64",
-            "key_names": ["key"],
-            "key_types": ["uint64"]
+            "key_names": [],
+            "key_types": []
         },
         {
             "name": "stats",
             "type": "currstats",
             "index_type": "i64",
-            "key_names": ["currency"],
-            "key_types": ["uint64"]
+            "key_names": [],
+            "key_types": []
         }
     ],
     "ricardian_clauses": [],

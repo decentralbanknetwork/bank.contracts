@@ -2,56 +2,54 @@
 #include "base58.c"
 
 [[eosio::action]]
-void pay2key::create(name issuer, asset maximum_supply) {
+void pay2key::create(name token_contract, symbol ticker) {
     require_auth( _self );
 
-    auto symbol = maximum_supply.symbol;
-    eosio_assert(symbol.is_valid(), "invalid symbol name");
-    eosio_assert(maximum_supply.is_valid(), "invalid supply");
-    eosio_assert(maximum_supply.amount > 0, "max-supply must be positive");
+    eosio_assert(ticker.is_valid(), "invalid symbol name");
 
-    stats statstable(_self, symbol.raw());
-    auto existing = statstable.find(symbol.raw());
-    eosio_assert(existing == statstable.end(), "token with symbol already exists");
+    stats statstable(_self, _self.value);
+    auto contract_sym_index = statstable.get_index<name("byctrsym")>();
+    uint128_t merged = merge_contract_symbol(token_contract, ticker);
+    auto existing = contract_sym_index.find(merged);
+    eosio_assert(existing == contract_sym_index.end(), "Token is already registered");
+
+    asset supply = asset(0, ticker);
 
     statstable.emplace(_self, [&](auto& s) {
-        s.supply.symbol = maximum_supply.symbol;
-        s.max_supply    = maximum_supply;
-        s.issuer        = issuer;
+        s.chain_id = statstable.available_primary_key();
+        s.symbol = ticker;
+        s.token_contract = token_contract;
+        s.supply = supply;
     });
 }
 
-void pay2key::issue(name from, name to, asset quantity, string memo) {
-    if (from == _self) return; // sending EOS, ignore
+void pay2key::issue( name from, name to, asset quantity, string memo ) {
+    if (from == _self) return; // sending tokens, ignore
 
     auto symbol = quantity.symbol;
     eosio_assert(symbol.is_valid(), "invalid symbol name");
     eosio_assert(memo.size() == 53, "memo must be a 53-char EOS public key");
     eosio_assert(memo.substr(0,3) == "EOS", "public key must start with EOS");
     eosio_assert(to == _self, "stop trying to hack the contract");
-    eosio_assert(quantity.symbol == EOS_SYMBOL, "this contract only accepts EOS");
 
-    stats statstable(_self, UTXO_SYMBOL.raw());
-    auto existing = statstable.find(UTXO_SYMBOL.raw());
-    eosio_assert(existing != statstable.end(), "UTXO token does not exist, create token before issue");
+    // make sure contract and symbol are accepted by contract
+    stats statstable(_self, _self.value);
+    auto contract_sym_index = statstable.get_index<name("byctrsym")>();
+    uint128_t merged = merge_contract_symbol(_code, symbol);
+    auto existing = contract_sym_index.find(merged);
+    eosio_assert(existing != contract_sym_index.end(), "Token is not yet supported. You must assign it a chain_id with `create` first");
     const auto& st = *existing;
 
+    // validate arguments
     eosio_assert(quantity.is_valid(), "invalid quantity");
     eosio_assert(quantity.amount > 0, "must issue positive quantity");
 
-    eosio_assert(quantity.symbol.precision() == st.supply.symbol.precision(), "symbol precision mismatch");
-    eosio_assert(quantity.amount <= st.max_supply.amount - st.supply.amount, "quantity exceeds available supply");
-
-    // copy EOS quantity to UTXO
-    auto utxo_quantity = quantity;
-    utxo_quantity.symbol = UTXO_SYMBOL;
-
-    // TODO: ensure EOS balance is enough to cover UTXO issuance
+    // TODO: ensure token balance is enough to cover UTXO issuance
     // This will always be true unless the contract has been hacked
     // so it is mostly a sanity check
 
-    statstable.modify(st, _self, [&](auto& s) {
-       s.supply += utxo_quantity;
+    statstable.modify(st, same_payer, [&](auto& s) {
+       s.supply += quantity;
     });
 
     // convert public key memo to public_key object
@@ -66,11 +64,15 @@ void pay2key::issue(name from, name to, asset quantity, string memo) {
     for (int i=0; i<4; i++)
         eosio_assert(checksum_bytes[i] == (uint8_t)issue_to.data[33+i], "invalid public key in memo: checksum does not validate");
 
-    add_balance(issue_to, utxo_quantity);
+    // Cannot charge RAM to other accounts during notify
+    // This is a major issue. How can we get the sender to pay for their own RAM?
+    add_balance(st.chain_id, issue_to, quantity, _self);
 }
 
 [[eosio::action]]
 void pay2key::transfer(
+            uint64_t chain_id,
+            name relayer_account,
             public_key relayer,
             public_key from,
             public_key to,
@@ -81,12 +83,15 @@ void pay2key::transfer(
             signature sig) {
 
     // get currency information
-    auto sym = quantity.symbol.raw();
-    stats statstable(_self, sym);
-    const auto& st = statstable.get(sym);
+    stats statstable(_self, _self.value);
+    const auto st = statstable.get(chain_id, "no token found for chain_id. chain_id must be created first");
+
+    // verify symbol matches currency information
+    eosio_assert(st.symbol == quantity.symbol, "quantity and chain_id symbols don't match. check decimal places");
+    eosio_assert(st.symbol == fee.symbol, "fee and chain_id symbols don't match. check decimal places");
 
     // get last nonce
-    accounts accounts_table(_self, _self.value);
+    accounts accounts_table(_self, chain_id);
     auto pk_index = accounts_table.get_index<name("bypk")>();
     auto account_it = pk_index.find(public_key_to_fixed_bytes(from));
     uint64_t last_nonce = 0;
@@ -101,26 +106,37 @@ void pay2key::transfer(
     eosio_assert(fee.amount >= 0, "fee must be non-negative");
     eosio_assert(quantity.amount <= account_it->balance.amount, "user has insufficient balance");
     eosio_assert(quantity.amount + fee.amount <= account_it->balance.amount, "user has insufficient balance to cover fee");
-    eosio_assert(quantity.symbol == st.supply.symbol, "symbol precision mismatch");
-    eosio_assert(fee.symbol == st.supply.symbol, "symbol precision mismatch");
-    eosio_assert(memo.size() <= 163, "memo has more than 164 bytes");
+    eosio_assert(memo.size() <= 159, "memo has more than 159 bytes");
     eosio_assert(nonce > last_nonce, "Nonce must be greater than last nonce. This transaction may already have been relayed.");
     eosio_assert(nonce < last_nonce + 100, "Nonce cannot jump by more than 100");
 
+    // transaction format
+    // bytes    field
+    // 1        version
+    // 1        length
+    // 4        chain_id
+    // 33       from_pubkey
+    // 33       to_pubkey
+    // 8        quantity
+    // 8        fee
+    // 8        nonce
+    // 0-159    memo
     // tx meta fields
-    uint8_t version = 0x01;
-    uint8_t length = 92 + memo.size();
+    uint8_t version = 0x02;
+    uint8_t length = 96 + memo.size();
+    uint32_t chain_id_32 = chain_id & 0xFFFFFFFF;
 
     // construct raw transaction
     uint8_t rawtx[length];
     rawtx[0] = version;
     rawtx[1] = length;
-    memcpy(rawtx + 2, from.data.data(), 33);
-    memcpy(rawtx + 35, to.data.data(), 33);
-    memcpy(rawtx + 68, (uint8_t *)&quantity.amount, 8);
-    memcpy(rawtx + 76, (uint8_t *)&fee.amount, 8);
-    memcpy(rawtx + 84, (uint8_t *)&nonce, 8);
-    memcpy(rawtx + 92, memo.c_str(), memo.size());
+    memcpy(rawtx + 2, (uint8_t *)&chain_id, 4);
+    memcpy(rawtx + 6, from.data.data(), 33);
+    memcpy(rawtx + 39, to.data.data(), 33);
+    memcpy(rawtx + 72, (uint8_t *)&quantity.amount, 8);
+    memcpy(rawtx + 80, (uint8_t *)&fee.amount, 8);
+    memcpy(rawtx + 88, (uint8_t *)&nonce, 8);
+    memcpy(rawtx + 96, memo.c_str(), memo.size());
 
     // hash transaction
     checksum256 digest = sha256((const char *)rawtx, length);
@@ -129,12 +145,12 @@ void pay2key::transfer(
     assert_recover_key(digest, sig, from);
 
     // update last nonce
-    pk_index.modify(account_it, _self, [&]( auto& n ){
+    pk_index.modify(account_it, same_payer, [&]( auto& n ){
         n.last_nonce = nonce;
     });
 
     // always subtract the quantity from the sender
-    sub_balance(from, quantity);
+    sub_balance(chain_id, from, quantity);
 
     // Create the public_key object for the WITHDRAW_ADDRESS
     public_key withdraw_key = to;
@@ -143,36 +159,33 @@ void pay2key::transfer(
     // if the to address is the withdraw address, send an IQ transfer out
     // and update the circulating supply
     if (to == withdraw_key) {
-        asset eos_quantity = quantity;
-        eos_quantity.symbol = EOS_SYMBOL;
         name withdraw_account = name(memo);
         action(
             permission_level{ _self , name("active") },
-            name("everipediaiq") , name("transfer"),
-            std::make_tuple( _self, withdraw_account, eos_quantity, std::string("withdraw EOS from UTXO"))
+            st.token_contract , name("transfer"),
+            std::make_tuple( _self, withdraw_account, quantity, std::string("withdraw from UTXO"))
         ).send();
 
-        stats statstable(_self, quantity.symbol.raw());
-        auto& supply_it = statstable.get(quantity.symbol.raw(), "UTXO symbol is missing. Create it first");
-        statstable.modify(supply_it, _self, [&](auto& s) {
+        auto st = statstable.find(chain_id);
+        statstable.modify(st, same_payer, [&](auto& s) {
            s.supply -= quantity;
         });
     }
     // add the balance if it's not a withdrawal
     else {
-        add_balance(to, quantity);
+        add_balance(chain_id, to, quantity, relayer_account);
     }
 
     // update balances with fees
     if (fee.amount > 0) {
-        sub_balance(from, fee);
-        add_balance(relayer, fee);
+        sub_balance(chain_id, from, fee);
+        add_balance(chain_id, relayer, fee, relayer_account);
     }
 
 }
 
-void pay2key::sub_balance(public_key sender, asset value) {
-    accounts from_acts(_self, _self.value);
+void pay2key::sub_balance(uint64_t chain_id, public_key sender, asset value) {
+    accounts from_acts(_self, chain_id);
 
     auto accounts_index = from_acts.get_index<name("bypk")>();
     const auto& from = accounts_index.get(public_key_to_fixed_bytes(sender), "no public key object found");
@@ -181,27 +194,27 @@ void pay2key::sub_balance(public_key sender, asset value) {
     if (from.balance.amount == value.amount) {
         from_acts.erase(from);
     } else {
-        from_acts.modify(from, _self, [&]( auto& a ) {
+        from_acts.modify(from, same_payer, [&]( auto& a ) {
             a.balance -= value;
         });
     }
 }
 
-void pay2key::add_balance(public_key recipient, asset value) {
-    accounts to_acts(_self, _self.value);
+void pay2key::add_balance(uint64_t chain_id, public_key recipient, asset value, name ram_payer) {
+    accounts to_acts(_self, chain_id);
 
     auto accounts_index = to_acts.get_index<name("bypk")>();
     auto to = accounts_index.find(public_key_to_fixed_bytes(recipient));
 
     if (to == accounts_index.end()) {
-        to_acts.emplace(_self, [&]( auto& a ){
+        to_acts.emplace(ram_payer, [&]( auto& a ){
             a.key = to_acts.available_primary_key();
             a.balance = value;
             a.publickey = recipient;
             a.last_nonce = 0;
         });
     } else {
-        accounts_index.modify(to, _self, [&]( auto& a ) {
+        accounts_index.modify(to, same_payer, [&]( auto& a ) {
             a.balance += value;
         });
     }
@@ -210,7 +223,7 @@ void pay2key::add_balance(public_key recipient, asset value) {
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)
 {
     auto _self = receiver;
-    if (code == name("eosio.token").value && action == name("transfer").value)
+    if (code != _self && action == name("transfer").value)
     {
         eosio::execute_action(
             eosio::name(receiver), eosio::name(code), &pay2key::issue
