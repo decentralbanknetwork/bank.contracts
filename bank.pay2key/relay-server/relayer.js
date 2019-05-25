@@ -65,7 +65,7 @@ app.post('/relay/eos', function (req, res) {
     
     const result = eosapi.transact({
         actions: [{
-            account: process.env.UTXO_ACCOUNT,
+            account: process.env.EOS_UTXO_ACCOUNT,
             name: 'transfer',
             authorization: [{
                 actor: process.env.RELAYER_ACCOUNT,
@@ -99,7 +99,7 @@ app.post('/relay/btc', function (req, res) {
     
     const result = eosapi.transact({
         actions: [{
-            account: process.env.UTXO_ACCOUNT,
+            account: process.env.BTC_UTXO_ACCOUNT,
             name: 'transfer',
             authorization: [{
                 actor: process.env.RELAYER_ACCOUNT,
