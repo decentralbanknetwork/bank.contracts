@@ -2,6 +2,8 @@ const ecc = require('eosjs-ecc');
 const base58 = require('bs58');
 const shell = require('shelljs');
 
+const EOSIO_CONTRACTS_ROOT = '~/eosio.contracts/build/contracts';
+
 function getKeys() {
   return Promise.all([ecc.randomKey(), ecc.randomKey(), ecc.randomKey()]);
 }
@@ -70,7 +72,7 @@ async function test() {
   shell.exec(`cleos create account eosio eosio.token ${utxoKeys.public}`);
 
   // bootstrap system contracts
-  shell.exec(`cleos set contract eosio.token $EOSIO_CONTRACTS_ROOT/eosio.token/`)
+  shell.exec(`cleos set contract eosio.token ${EOSIO_CONTRACTS_ROOT}/eosio.token/`)
   shell.exec(`cleos push action eosio.token create '["eosio", "1000.0000 EOS"]' -p eosio.token`)
   shell.exec(`cleos push action eosio.token issue '["eosio", "1000.0000 EOS", "memo"]' -p eosio`)
 
@@ -79,8 +81,9 @@ async function test() {
   shell.exec('cleos set contract bank.pay2key ..');
 
   // create
-  shell.exec('cleos push action bank.pay2key create \'["bank.pay2key", "100.0000 UTXO"]\' -p bank.pay2key');
-  shell.exec('cleos get table bank.pay2key 340784338180 stats');
+  shell.exec('cleos push action bank.pay2key create \'["eosio.token", "EOS", 1]\' -p bank.pay2key');
+  shell.exec('cleos push action bank.pay2key create \'["everipediaiq", "IQ", 2]\' -p bank.pay2key');
+  shell.exec('cleos get table bank.pay2key bank.pay2key stats');
 
   // issue
   shell.exec(`cleos transfer eosio bank.pay2key "1.0000 EOS" ${utxoKeys.public}`);
