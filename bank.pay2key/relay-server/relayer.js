@@ -40,8 +40,8 @@ const eosSchema = Joi.object().keys({
 
 const btcSchema = Joi.object().keys({
     chain_id: Joi.number().min(0).max(1000).required(),
-    from: Joi.string().min(25).max(35).startsWith("1").required(),
-    to: Joi.string().min(25).max(35).startsWith("1").required(),
+    from: Joi.string().min(25).max(35).required(),
+    to: Joi.string().min(25).max(35).required(),
     amount: Joi.string(),
     fee: Joi.string(),
     nonce: Joi.number().integer().min(0).required(),
