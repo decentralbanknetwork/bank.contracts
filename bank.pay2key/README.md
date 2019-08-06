@@ -18,7 +18,7 @@ Anyone can send the designated token to the UTXO contract, triggering an issuanc
 ```
 cleos push action everipediaiq transfer '["{EOS_account}", "{UTXO_contract_account}", "100.000 IQUTXO", "{PUBLIC_KEY}"]' -p {EOS_account}@active
 ```
-Now that public key will have 100 IQUTXO to spend.
+Now that public key will have 100 IQUTXO to spend
 
 ## 3. Transferring from one public key to another
 

@@ -6,4 +6,4 @@ The blockchain's base smart contract system is based on the EOSIO protocol with 
 
 This repository houses the contracts for banking and monetary policy usage of the chain. Current modules in progress are: bond tokens and instruments, UTXO and MimbleWimble tokens, a debt/collateralization framework (CDP), and the network's native staking/consensus token. 
 
-More information coming soon.
+More information coming soon

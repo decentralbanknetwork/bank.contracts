@@ -86,7 +86,7 @@ class App extends Component {
 
   async apiRequest(signature) {
     this.setState({ error: null });
-    const RELAY_ENDPOINT = "http://epmainnet.libertyblock.io:6400/relay";
+    const RELAY_ENDPOINT = "https://relayer.utxo.libertyblock.io/relay";
     const relay_response = await fetch(RELAY_ENDPOINT, {
       method: 'POST',
       headers: {
