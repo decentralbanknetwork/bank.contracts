@@ -13,7 +13,7 @@ public:
     using contract::contract;
     
     [[eosio::action]]
-    void addtoken(name token_contract, symbol ticker);
+    void addtoken(name contract, symbol ticker);
 
     // Public but not a directly callable action
     // Called indirectly by sending EOS to this contract
@@ -32,12 +32,12 @@ public:
         name contract;
 
         uint64_t primary_key() const { return supply.symbol.raw(); }
-        uint64_t by_token_contract() const { return token_contract.value; }
-        uint128_t by_contract_symbol() const { return merge_contract_symbol(token_contract, supply.symbol); }
+        uint64_t by_contract() const { return contract.value; }
+        uint128_t by_contract_symbol() const { return merge_contract_symbol(contract, supply.symbol); }
     };
-    typedef eosio::multi_index<"stats"_n, stats_t,
-       indexed_by<"bycontract"_n, const_mem_fun<currstats, uint64_t, &currstats::by_token_contract>>,
-       indexed_by<"byctrsym"_n, const_mem_fun<currstats, uint128_t, &currstats::by_contract_symbol>>
+    typedef eosio::multi_index<"stats"_n, stats_t, 
+       indexed_by<"bycontract"_n, const_mem_fun<stats_t, uint64_t, &stats_t::by_contract>>,
+       indexed_by<"byctrsym"_n, const_mem_fun<stats_t, uint128_t, &stats_t::by_contract_symbol>>
     > stats;
 
   private:

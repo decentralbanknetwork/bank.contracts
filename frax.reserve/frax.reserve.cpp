@@ -1,25 +1,21 @@
-#include "bank.pay2key.hpp"
-#include "base58.c"
+#include "frax.reserve.hpp"
 
 [[eosio::action]]
-void fraxreserve::addtoken(name token_contract, symbol ticker) {
+void fraxreserve::addtoken(name contract, symbol ticker) {
     require_auth( _self );
 
     eosio_assert(ticker.is_valid(), "invalid symbol name");
 
     stats statstable(_self, _self.value);
     auto contract_sym_index = statstable.get_index<name("byctrsym")>();
-    uint128_t merged = merge_contract_symbol(token_contract, ticker);
+    uint128_t merged = merge_contract_symbol(contract, ticker);
     auto existing = contract_sym_index.find(merged);
     eosio_assert(existing == contract_sym_index.end(), "Token is already registered");
-
-    asset supply = asset(0, ticker);
+    eosio_assert(statstable.find(ticker.raw()) == statstable.end(), "Another token with that ticker already exists");
 
     statstable.emplace(_self, [&](auto& s) {
-        s.chain_id = statstable.available_primary_key();
-        s.symbol = ticker;
-        s.token_contract = token_contract;
-        s.supply = supply;
+        s.contract = contract;
+        s.supply = asset(0, ticker);
     });
 }
 
@@ -28,8 +24,6 @@ void fraxreserve::deposit( name from, name to, asset quantity, string memo ) {
 
     auto symbol = quantity.symbol;
     eosio_assert(symbol.is_valid(), "invalid symbol name");
-    eosio_assert(memo.size() == 53, "memo must be a 53-char EOS public key");
-    eosio_assert(memo.substr(0,3) == "EOS", "public key must start with EOS");
     eosio_assert(to == _self, "stop trying to hack the contract");
 
     // make sure contract and symbol are accepted by contract
@@ -37,12 +31,28 @@ void fraxreserve::deposit( name from, name to, asset quantity, string memo ) {
     auto contract_sym_index = statstable.get_index<name("byctrsym")>();
     uint128_t merged = merge_contract_symbol(_code, symbol);
     auto existing = contract_sym_index.find(merged);
-    eosio_assert(existing != contract_sym_index.end(), "Token is not yet supported. You must assign it a chain_id with `addtoken` first");
-    const auto& st = *existing;
+    eosio_assert(existing != contract_sym_index.end(), "Token is not yet supported");
 
     // validate arguments
     eosio_assert(quantity.is_valid(), "invalid quantity");
-    eosio_assert(quantity.amount > 0, "must issue positive quantity");
+    eosio_assert(quantity.amount < 1e10, "quantity is suspiciously high. send a smaller amount");
+    eosio_assert(quantity.amount > 0, "must deposit positive quantity");
+    eosio_assert(memo.size() < 256, "memo must be less than 256 bytes");
+
+    // create/update entry in table
+    accounts acctstbl( _self, from.value );
+    auto account_it = acctstbl.find(symbol.raw());
+    if (account_it == acctstbl.end()) {
+        acctstbl.emplace( _self, [&](auto& a) {
+            a.ticker = symbol;
+            a.balance = quantity;
+        });
+    }
+    else {
+        acctstbl.modify( account_it, _self, [&](auto& a) {
+            a.balance += quantity;
+        });
+    }
 }
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)
