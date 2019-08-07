@@ -20,12 +20,11 @@ public:
     void deposit( name from, name to, asset quantity, string memo );
 
     struct [[eosio::table]] account {
-      symbol ticker;
       asset balance;
 
-      uint64_t primary_key() const { return ticker.raw(); }
+      uint64_t primary_key() const { return balance.symbol.raw(); }
     };
-    typedef eosio::multi_index<"accounts"_n, account> accounts;
+    typedef eosio::multi_index<"deposits"_n, account> deposits;
 
     struct [[eosio::table]] stats_t {
         asset supply;

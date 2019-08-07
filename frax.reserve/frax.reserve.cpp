@@ -40,16 +40,15 @@ void fraxreserve::deposit( name from, name to, asset quantity, string memo ) {
     eosio_assert(memo.size() < 256, "memo must be less than 256 bytes");
 
     // create/update entry in table
-    accounts acctstbl( _self, from.value );
-    auto account_it = acctstbl.find(symbol.raw());
-    if (account_it == acctstbl.end()) {
-        acctstbl.emplace( _self, [&](auto& a) {
-            a.ticker = symbol;
+    deposits deptbl( _self, from.value );
+    auto account_it = deptbl.find(symbol.raw());
+    if (account_it == deptbl.end()) {
+        deptbl.emplace( _self, [&](auto& a) {
             a.balance = quantity;
         });
     }
     else {
-        acctstbl.modify( account_it, _self, [&](auto& a) {
+        deptbl.modify( account_it, _self, [&](auto& a) {
             a.balance += quantity;
         });
     }

@@ -119,6 +119,7 @@ cleos wallet import --private-key 5K8juhLvjpPHDX1VkueBYKi2EeUVWMHACed9HF39pp6uss
 cleos wallet import --private-key 5Js2o8RLjC3PcsEEEdprpgNEg4ZfjUQdiL2FHheWFFKgb4QSMX9 # everipediaiq
 cleos wallet import --private-key 5JmBnFBTBHAuhgX7iAxNnb5SEUpyBiYqNrh789XWBujN6iXU8dG # frax.reserve
 cleos wallet import --private-key 5Jka9J9sthYAGHAJYJEYVuZSSnuTgpqV5WMaMMxow5MRqDUWRGt # tethertether
+cleos wallet import --private-key 5Jn4z4UhDh68GZREnDpBtMXPAx96d3CX7mLgSbUTca4eEUZNxho # fraxtokenfxs
 
 # Create user accounts
 echo -e "${CYAN}-----------------------USER ACCOUNTS-----------------------${NC}"
@@ -134,6 +135,7 @@ cleos system newaccount eosio dcbtestuserb EOS6KnJPV1mDuS8pYuLucaWzkwbWjGPeJsfQD
 cleos system newaccount eosio dcbtestuserc EOS76Pcyw1Hd7hW8hkZdUE1DQ3UiRtjmAKQ3muKwidRqmaM8iNtDy --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio dcbtestuserd EOS7jnmGEK9i33y3N1aV29AYrFptyJ43L7pATBEuVq4fVXG1hzs3G --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio dcbtestusere EOS7vr4QpGP7ixUSeumeEahHQ99YDE5jiBucf1B2zhuidHzeni1dD --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
+cleos system newaccount eosio fraxtokenfxs EOS7vr4QpGP7ixUSeumeEahHQ99YDE5jiBucf1B2zhuidHzeni1dD --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 
 # Deploy eosio.wrap
 echo -e "${CYAN}-----------------------EOSIO WRAP-----------------------${NC}"
@@ -160,7 +162,7 @@ cleos set contract bank.cdp ../bank.cdp/
 cleos set contract bank.pay2key ../bank.pay2key/
 cleos set contract everipediaiq $EOSIO_CONTRACTS_ROOT/eosio.token/
 cleos set contract tethertether $EOSIO_CONTRACTS_ROOT/eosio.token/
-assert $(bc <<< "$? == 0")
+cleos set contract fraxtokenfxs $EOSIO_CONTRACTS_ROOT/eosio.token/
 
 echo -e "${CYAN}-----------------------TRANSFERRING IQ-----------------------${NC}"
 cleos push action everipediaiq create '[ "everipediaiq", "10000000000.000 IQ" ]' -p everipediaiq
@@ -179,6 +181,24 @@ cleos push action tethertether transfer '["tethertether", "dcbtestuserb", "10000
 cleos push action tethertether transfer '["tethertether", "dcbtestuserc", "10000.0000 USDT", "memo"]' -p tethertether
 cleos push action tethertether transfer '["tethertether", "dcbtestuserd", "10000.0000 USDT", "memo"]' -p tethertether
 cleos push action tethertether transfer '["tethertether", "dcbtestusere", "10000.0000 USDT", "memo"]' -p tethertether
+
+echo -e "${CYAN}-----------------------TRANSFERRING FRAX-----------------------${NC}"
+cleos push action fraxtokenfxs create '[ "fraxtokenfxs", "10000000000.0000 FRAX" ]' -p fraxtokenfxs
+cleos push action fraxtokenfxs issue '[ "fraxtokenfxs", "1000000000.0000 FRAX", "issue FRAX" ]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusera", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserb", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserc", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserd", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusere", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
+
+echo -e "${CYAN}-----------------------TRANSFERRING FXS-----------------------${NC}"
+cleos push action fraxtokenfxs create '[ "fraxtokenfxs", "10000000000.0000 FXS" ]' -p fraxtokenfxs
+cleos push action fraxtokenfxs issue '[ "fraxtokenfxs", "1000000000.0000 FXS", "issue FXS" ]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusera", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserb", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserc", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserd", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusere", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
 
 # UNTESTED
 # Grant permission for the bank.shares contract to issue more EOS tokens
