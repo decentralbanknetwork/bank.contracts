@@ -52,6 +52,71 @@ void fraxreserve::deposit( name from, name to, asset quantity, string memo ) {
             a.balance += quantity;
         });
     }
+
+}
+
+[[eosio::action]]
+void fraxreserve::buyfrax(name buyer, asset frax) {
+    require_auth(buyer);
+
+    eosio_assert(frax.amount > 0, "Must buy a positive amount");
+    eosio_assert(frax.symbol == FRAX_SYMBOL, "Can only buy FRAX");
+
+    sysparams paramstbl( _self, _self.value);
+    eosio_assert(paramstbl.begin() != paramstbl.end(), "Reserve params must be initialized first");
+    auto param_it = paramstbl.begin();
+
+    stats statstable(_self, _self.value);
+    auto frax_stats = statstable.get(FRAX_SYMBOL.raw(), "Must addtoken FRAX first");
+    auto fxs_stats = statstable.get(FXS_SYMBOL.raw(), "Must addtoken FXS first");
+    auto usdt_stats = statstable.get(USDT_SYMBOL.raw(), "Must addtoken USDT first");
+
+    asset needed_usdt = param_it->target_usdt - usdt_stats.supply;
+    asset needed_fxs = param_it->target_fxs - fxs_stats.supply;
+    uint64_t needed_fxs_value = needed_fxs.amount * param_it->fxs_price / 1e4;
+    uint64_t total_needed_value = needed_usdt.amount + needed_fxs_value;
+
+    asset sell_usdt = asset(frax.amount * needed_usdt.amount / total_needed_value, USDT_SYMBOL);
+    asset sell_fxs = asset(frax.amount * needed_fxs_value / total_needed_value, FXS_SYMBOL);
+    eosio_assert(sell_usdt <= needed_usdt, "Attempting to buy too much FRAX");
+    eosio_assert(sell_fxs <= needed_fxs, "Attempting to buy too much FRAX");
+
+    // Update deposits
+    deposits deptbl( _self, buyer.value );
+    auto frax_account = deptbl.find(FRAX_SYMBOL.raw());
+    auto usdt_account = deptbl.find(USDT_SYMBOL.raw());
+    auto fxs_account = deptbl.find(FXS_SYMBOL.raw());
+    deptbl.modify( frax_account, _self, [&](auto& a) {
+        a.balance += frax;
+    });
+    deptbl.modify( usdt_account, _self, [&](auto& a) {
+        a.balance -= sell_usdt;
+    });
+    deptbl.modify( fxs_account, _self, [&](auto& a) {
+        a.balance -= sell_fxs;
+    });
+
+}
+
+[[eosio::action]]
+void fraxreserve::settarget(asset target_usdt, asset target_fxs, uint64_t fxs_price) {
+    require_auth( _self );
+
+    sysparams paramstbl( _self, _self.value);
+    if (paramstbl.begin() == paramstbl.end()) {
+        paramstbl.emplace( _self, [&](auto& p) {
+            p.target_usdt = target_usdt;
+            p.target_fxs = target_fxs;
+            p.fxs_price = fxs_price;
+        });
+    }
+    else {
+        paramstbl.modify( paramstbl.begin(), _self, [&](auto& p) {
+            p.target_usdt = target_usdt;
+            p.target_fxs = target_fxs;
+        });
+    }
+
 }
 
 extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)

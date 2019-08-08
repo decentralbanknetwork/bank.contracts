@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Tue Aug  6 17:21:27 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Aug  7 19:38:38 2019",
     "version": "eosio::abi/1.1",
     "structs": [
         {
@@ -27,6 +27,66 @@
             ]
         },
         {
+            "name": "buyfrax",
+            "base": "",
+            "fields": [
+                {
+                    "name": "buyer",
+                    "type": "name"
+                },
+                {
+                    "name": "frax",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "params_t",
+            "base": "",
+            "fields": [
+                {
+                    "name": "target_usdt",
+                    "type": "asset"
+                },
+                {
+                    "name": "target_fxs",
+                    "type": "asset"
+                },
+                {
+                    "name": "fxs_price",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "setprice",
+            "base": "",
+            "fields": [
+                {
+                    "name": "fxs_price",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "settarget",
+            "base": "",
+            "fields": [
+                {
+                    "name": "reserve_usdt",
+                    "type": "asset"
+                },
+                {
+                    "name": "reserve_fxs",
+                    "type": "asset"
+                },
+                {
+                    "name": "fxs_price",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
             "name": "stats_t",
             "base": "",
             "fields": [
@@ -47,6 +107,21 @@
             "name": "addtoken",
             "type": "addtoken",
             "ricardian_contract": ""
+        },
+        {
+            "name": "buyfrax",
+            "type": "buyfrax",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setprice",
+            "type": "setprice",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settarget",
+            "type": "settarget",
+            "ricardian_contract": ""
         }
     ],
     "tables": [
@@ -60,6 +135,13 @@
         {
             "name": "stats",
             "type": "stats_t",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "sysparams",
+            "type": "params_t",
             "index_type": "i64",
             "key_names": [],
             "key_types": []
