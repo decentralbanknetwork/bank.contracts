@@ -40,7 +40,7 @@ void fraxreserve::deposit( name from, name to, asset quantity, string memo ) {
     eosio_assert(memo.size() < 256, "memo must be less than 256 bytes");
 
     // create/update entry in table
-    deposits deptbl( _self, from.value );
+    accounts deptbl( _self, from.value );
     auto account_it = deptbl.find(symbol.raw());
     if (account_it == deptbl.end()) {
         deptbl.emplace( _self, [&](auto& a) {
@@ -67,7 +67,6 @@ void fraxreserve::buyfrax(name buyer, asset frax) {
     auto param_it = paramstbl.begin();
 
     stats statstable(_self, _self.value);
-    auto frax_stats = statstable.get(FRAX_SYMBOL.raw(), "Must addtoken FRAX first");
     auto fxs_stats = statstable.get(FXS_SYMBOL.raw(), "Must addtoken FXS first");
     auto usdt_stats = statstable.get(USDT_SYMBOL.raw(), "Must addtoken USDT first");
 
@@ -81,26 +80,41 @@ void fraxreserve::buyfrax(name buyer, asset frax) {
     eosio_assert(sell_usdt <= needed_usdt, "Attempting to buy too much FRAX");
     eosio_assert(sell_fxs <= needed_fxs, "Attempting to buy too much FRAX");
 
-    // Update deposits
-    deposits deptbl( _self, buyer.value );
-    auto frax_account = deptbl.find(FRAX_SYMBOL.raw());
-    auto usdt_account = deptbl.find(USDT_SYMBOL.raw());
-    auto fxs_account = deptbl.find(FXS_SYMBOL.raw());
-    deptbl.modify( frax_account, _self, [&](auto& a) {
-        a.balance += frax;
-    });
-    deptbl.modify( usdt_account, _self, [&](auto& a) {
-        a.balance -= sell_usdt;
-    });
-    deptbl.modify( fxs_account, _self, [&](auto& a) {
-        a.balance -= sell_fxs;
-    });
+    // Update accounts
+    accounts deptbl( _self, buyer.value );
+    if (sell_usdt.amount > 0) {
+        auto usdt_account = deptbl.find(USDT_SYMBOL.raw());
+        eosio_assert(usdt_account != deptbl.end(), "No USDT balance for this user");
+        eosio_assert(usdt_account->balance >= sell_usdt, "Not enough USDT balance to buy FRAX");
+        deptbl.modify( usdt_account, _self, [&](auto& a) {
+            a.balance -= sell_usdt;
+        });
+    }
+    if (sell_fxs.amount > 0) {
+        auto fxs_account = deptbl.find(FXS_SYMBOL.raw());
+        eosio_assert(fxs_account != deptbl.end(), "No FXS balance for this user");
+        eosio_assert(fxs_account->balance >= sell_fxs, "Not enough FXS balance to buy FRAX");
+        deptbl.modify( fxs_account, _self, [&](auto& a) {
+            a.balance -= sell_fxs;
+        });
+    }
+
+    // Issue FRAX
+    action(
+        permission_level { _self, name("active") },
+        name("fraxtokenfxs"), name("issue"),
+        std::make_tuple( buyer, frax, std::string("issue FRAX") )
+    ).send();
 
 }
 
 [[eosio::action]]
 void fraxreserve::settarget(asset target_usdt, asset target_fxs, uint64_t fxs_price) {
     require_auth( _self );
+
+    eosio_assert(target_usdt.symbol == USDT_SYMBOL, "Symbol mismatch for target_usdt");
+    eosio_assert(target_fxs.symbol == FXS_SYMBOL, "Symbol mismatch for target_usdt");
+    eosio_assert(fxs_price > 0, "fxs_price must be postive");
 
     sysparams paramstbl( _self, _self.value);
     if (paramstbl.begin() == paramstbl.end()) {
@@ -128,10 +142,10 @@ extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)
             eosio::name(receiver), eosio::name(code), &fraxreserve::deposit
         );
     }
-    else if (code == _self && action == name("addtoken").value)
+    else if (code == _self)
     {
-        eosio::execute_action(
-            eosio::name(receiver), eosio::name(code), &fraxreserve::addtoken
-        );
+        switch (action) {
+            EOSIO_DISPATCH_HELPER( fraxreserve, (addtoken)(buyfrax)(settarget) )
+        }
     }
 }

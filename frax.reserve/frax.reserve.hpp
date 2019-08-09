@@ -23,9 +23,6 @@ public:
     void buyfrax(name buyer, asset frax);
 
     [[eosio::action]]
-    void setprice(uint64_t fxs_price);
-
-    [[eosio::action]]
     void settarget(asset reserve_usdt, asset reserve_fxs, uint64_t fxs_price);
     
     // Public but not a directly callable action
@@ -39,7 +36,7 @@ public:
 
       uint64_t primary_key() const { return balance.symbol.raw(); }
     };
-    typedef eosio::multi_index<"deposits"_n, account> deposits;
+    typedef eosio::multi_index<"accounts"_n, account> accounts;
 
     // Token stats
     // Contract scope

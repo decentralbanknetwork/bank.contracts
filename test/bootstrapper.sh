@@ -183,17 +183,11 @@ cleos push action tethertether transfer '["tethertether", "dcbtestuserd", "10000
 cleos push action tethertether transfer '["tethertether", "dcbtestusere", "10000.0000 USDT", "memo"]' -p tethertether
 
 echo -e "${CYAN}-----------------------TRANSFERRING FRAX-----------------------${NC}"
-cleos push action fraxtokenfxs create '[ "fraxtokenfxs", "10000000000.0000 FRAX" ]' -p fraxtokenfxs
-cleos push action fraxtokenfxs issue '[ "fraxtokenfxs", "1000000000.0000 FRAX", "issue FRAX" ]' -p fraxtokenfxs
-cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusera", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
-cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserb", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
-cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserc", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
-cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserd", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
-cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusere", "10000.0000 FRAX", "memo"]' -p fraxtokenfxs
+cleos push action fraxtokenfxs create '[ "frax.reserve", "10000000000.0000 FRAX" ]' -p fraxtokenfxs
 
 echo -e "${CYAN}-----------------------TRANSFERRING FXS-----------------------${NC}"
-cleos push action fraxtokenfxs create '[ "fraxtokenfxs", "10000000000.0000 FXS" ]' -p fraxtokenfxs
-cleos push action fraxtokenfxs issue '[ "fraxtokenfxs", "1000000000.0000 FXS", "issue FXS" ]' -p fraxtokenfxs
+cleos push action fraxtokenfxs create '[ "fraxtokenfxs", "1000000.0000 FXS" ]' -p fraxtokenfxs # 1M cap fixed supply
+cleos push action fraxtokenfxs issue '[ "fraxtokenfxs", "1000000.0000 FXS", "issue FXS" ]' -p fraxtokenfxs
 cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusera", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
 cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserb", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
 cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserc", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
@@ -207,5 +201,6 @@ cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusere", "10000
 # Grant code permissions for contracts that need it
 cleos set account permission bank.safesnd active '{ "threshold": 1, "keys": [{ "key": "EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8", "weight": 1 }], "accounts": [{ "permission": { "actor":"bank.safesnd","permission":"eosio.code" }, "weight":1 }] }' owner -p bank.safesnd
 cleos set account permission bank.pay2key active '{ "threshold": 1, "keys": [{ "key": "EOS65yGjjyeyduJMGpQMGy39NcJenXFQ52HgroYos4dwjbwxu5TTW", "weight": 1 }], "accounts": [{ "permission": { "actor":"bank.pay2key","permission":"eosio.code" }, "weight":1 } ] }'
+cleos set account permission frax.reserve active '{ "threshold": 1, "keys": [{ "key": "EOS6jA39vSMGVHVQzxhYhE9gMToCYG9U9QLZiWZschCgfQuKJ6nrF", "weight": 1 }], "accounts": [{ "permission": { "actor":"frax.reserve","permission":"eosio.code" }, "weight":1 } ] }'
 
 echo -e "${CYAN}-----------------------COMPLETE-----------------------${NC}"

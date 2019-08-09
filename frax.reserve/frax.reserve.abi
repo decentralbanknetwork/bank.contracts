@@ -1,5 +1,5 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Wed Aug  7 19:38:38 2019",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Aug  8 16:00:41 2019",
     "version": "eosio::abi/1.1",
     "structs": [
         {
@@ -59,16 +59,6 @@
             ]
         },
         {
-            "name": "setprice",
-            "base": "",
-            "fields": [
-                {
-                    "name": "fxs_price",
-                    "type": "uint64"
-                }
-            ]
-        },
-        {
             "name": "settarget",
             "base": "",
             "fields": [
@@ -114,11 +104,6 @@
             "ricardian_contract": ""
         },
         {
-            "name": "setprice",
-            "type": "setprice",
-            "ricardian_contract": ""
-        },
-        {
             "name": "settarget",
             "type": "settarget",
             "ricardian_contract": ""
@@ -126,7 +111,7 @@
     ],
     "tables": [
         {
-            "name": "deposits",
+            "name": "accounts",
             "type": "account",
             "index_type": "i64",
             "key_names": [],
