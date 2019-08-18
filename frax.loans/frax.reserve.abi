@@ -1,0 +1,138 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Thu Aug  8 16:00:41 2019",
+    "version": "eosio::abi/1.1",
+    "structs": [
+        {
+            "name": "account",
+            "base": "",
+            "fields": [
+                {
+                    "name": "balance",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "addtoken",
+            "base": "",
+            "fields": [
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "ticker",
+                    "type": "symbol"
+                }
+            ]
+        },
+        {
+            "name": "buyfrax",
+            "base": "",
+            "fields": [
+                {
+                    "name": "buyer",
+                    "type": "name"
+                },
+                {
+                    "name": "frax",
+                    "type": "asset"
+                }
+            ]
+        },
+        {
+            "name": "params_t",
+            "base": "",
+            "fields": [
+                {
+                    "name": "target_usdt",
+                    "type": "asset"
+                },
+                {
+                    "name": "target_fxs",
+                    "type": "asset"
+                },
+                {
+                    "name": "fxs_price",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "settarget",
+            "base": "",
+            "fields": [
+                {
+                    "name": "reserve_usdt",
+                    "type": "asset"
+                },
+                {
+                    "name": "reserve_fxs",
+                    "type": "asset"
+                },
+                {
+                    "name": "fxs_price",
+                    "type": "uint64"
+                }
+            ]
+        },
+        {
+            "name": "stats_t",
+            "base": "",
+            "fields": [
+                {
+                    "name": "supply",
+                    "type": "asset"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "types": [],
+    "actions": [
+        {
+            "name": "addtoken",
+            "type": "addtoken",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "buyfrax",
+            "type": "buyfrax",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "settarget",
+            "type": "settarget",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "accounts",
+            "type": "account",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "stats",
+            "type": "stats_t",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "sysparams",
+            "type": "params_t",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": [],
+    "abi_extensions": []
+}
