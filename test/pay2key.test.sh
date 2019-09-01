@@ -38,13 +38,12 @@ NONCE1=$(cleos get table bank.pay2key 0 accounts | jq ".rows[0].last_nonce")
 NONCE1=$(echo "$NONCE1 + 1" | bc)
 MEMO1="EOS transfer"
 CHAIN1=0
-echo $NONCE1
 SIG1=$(node pay2key.sign.js $CHAIN1 $PUBKEY1 $PUBKEY2 10000 10 $NONCE1 "$MEMO1" $PRIVKEY1)
 cleos push action bank.pay2key transfer "[$CHAIN1, \"dcbtestusera\", \"$PUBKEY1\", \"$PUBKEY1\", \"$PUBKEY2\", \"1.0000 EOS\", \"0.0010 EOS\", $NONCE1, \"$MEMO1\", \"$SIG1\"]" -p dcbtestusera
 assert $(bc <<< "$? == 0")
 
 NONCE2=$(cleos get table bank.pay2key 1 accounts | jq ".rows[0].last_nonce")
-NONCE2=$(echo "$NONCE1 + 1" | bc)
+NONCE2=$(echo "$NONCE2 + 1" | bc)
 MEMO2="IQ transfer"
 CHAIN2=1
 SIG2=$(node pay2key.sign.js $CHAIN2 $PUBKEY2 $PUBKEY1 20300 15 $NONCE2 "$MEMO2" $PRIVKEY2)
@@ -67,13 +66,20 @@ cleos push action bank.pay2key transfer "[$CHAIN1, \"dcbtestusera\", \"$PUBKEY1\
 assert $(bc <<< "$? == 0")
 
 NONCE4=$(echo "$NONCE2 + 1" | bc)
-MEMO4="dcbtestuserb"
+MEMO4="dcbtestuserb:test memo"
 SIG4=$(node pay2key.sign.js $CHAIN2 $PUBKEY2 $WITHDRAW_PUBKEY 30000 15 $NONCE4 "$MEMO4" $PRIVKEY2)
 cleos push action bank.pay2key transfer "[$CHAIN2, \"dcbtestuserb\", \"$PUBKEY2\", \"$PUBKEY2\", \"$WITHDRAW_PUBKEY\", \"30.000 IQ\", \"0.015 IQ\", $NONCE4, \"$MEMO4\", \"$SIG4\"]" -p dcbtestuserb
+assert $(bc <<< "$? == 0")
+
+# edge case with just a colon
+NONCE5=$(echo "$NONCE4 + 1" | bc)
+MEMO5="dcbtestuserb:"
+SIG5=$(node pay2key.sign.js $CHAIN2 $PUBKEY2 $WITHDRAW_PUBKEY 30000 15 $NONCE5 "$MEMO5" $PRIVKEY2)
+cleos push action bank.pay2key transfer "[$CHAIN2, \"dcbtestuserb\", \"$PUBKEY2\", \"$PUBKEY2\", \"$WITHDRAW_PUBKEY\", \"30.000 IQ\", \"0.015 IQ\", $NONCE5, \"$MEMO5\", \"$SIG5\"]" -p dcbtestuserb
 assert $(bc <<< "$? == 0")
 
 EOS_BALANCE_AFTER=$(cleos get table eosio.token dcbtestusera accounts | jq ".rows[0].balance" | tr -d '"' | awk '{print $1}')
 IQ_BALANCE_AFTER=$(cleos get table everipediaiq dcbtestuserb accounts | jq ".rows[0].balance" | tr -d '"' | awk '{print $1}')
 
 assert $(bc <<< "$EOS_BALANCE_AFTER - $EOS_BALANCE_BEFORE == 2.0")
-assert $(bc <<< "$IQ_BALANCE_AFTER - $IQ_BALANCE_BEFORE == 30.0")
+assert $(bc <<< "$IQ_BALANCE_AFTER - $IQ_BALANCE_BEFORE == 60.0")

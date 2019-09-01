@@ -1,8 +1,11 @@
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/types.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/asset.hpp>
+///////////////////////////////////////
+// COMPILED WTIH EOSIO.CDT 1.6.1
+///////////////////////////////////////
+
+#include <eosio/eosio.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/print.hpp>
+#include <eosio/asset.hpp>
 
 using namespace eosio;
 using namespace std;
