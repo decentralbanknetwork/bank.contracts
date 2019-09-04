@@ -120,6 +120,7 @@ cleos wallet import --private-key 5Js2o8RLjC3PcsEEEdprpgNEg4ZfjUQdiL2FHheWFFKgb4
 cleos wallet import --private-key 5JmBnFBTBHAuhgX7iAxNnb5SEUpyBiYqNrh789XWBujN6iXU8dG # frax.reserve
 cleos wallet import --private-key 5Jka9J9sthYAGHAJYJEYVuZSSnuTgpqV5WMaMMxow5MRqDUWRGt # tethertether
 cleos wallet import --private-key 5Jn4z4UhDh68GZREnDpBtMXPAx96d3CX7mLgSbUTca4eEUZNxho # fraxtokenfxs
+cleos wallet import --private-key 5HpMNASust7Negki66DJ5benpQAsXBRM3jDpHe8eREddYctA5mF # frax.loans
 
 # Create user accounts
 echo -e "${CYAN}-----------------------USER ACCOUNTS-----------------------${NC}"
@@ -128,6 +129,7 @@ cleos system newaccount eosio bank.price EOS8dYVzNktdam3Vn31mSXcmbj7J7MzGNudqKb3
 cleos system newaccount eosio bank.safesnd EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8 --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio bank.pay2key EOS65yGjjyeyduJMGpQMGy39NcJenXFQ52HgroYos4dwjbwxu5TTW --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio frax.reserve EOS6jA39vSMGVHVQzxhYhE9gMToCYG9U9QLZiWZschCgfQuKJ6nrF --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
+cleos system newaccount eosio frax.loans EOS6DcmhfH9RSEftsRa6k8uH7E76sLRtj3hFPyVRLoNDEBdZE1anc --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio tethertether EOS6RAcCwqUBjPzJrN5vYBF7JLDrcEQEWnD5mnr1NSvYaEuJ5DUZK --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio everipediaiq EOS5Fpz9W4xkBGrvAAm3FERwcBTGzafeQkAzY6CeAEaxX3CedPL4N --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
 cleos system newaccount eosio dcbtestusera EOS7LpZDPKwWWXgJnNYnX6LCBgNqCEqugW9oUQr7XqcSfz7aSFk8o --stake-cpu "50 EOS" --stake-net "10 EOS" --buy-ram-kbytes 5000 --transfer
@@ -194,13 +196,10 @@ cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserc", "10000
 cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestuserd", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
 cleos push action fraxtokenfxs transfer '["fraxtokenfxs", "dcbtestusere", "10000.0000 FXS", "memo"]' -p fraxtokenfxs
 
-# UNTESTED
-# Grant permission for the bank.shares contract to issue more EOS tokens
-#cleos set action permission bank.shares eosio.token issue active -p eosio.token@active
-
 # Grant code permissions for contracts that need it
 cleos set account permission bank.safesnd active '{ "threshold": 1, "keys": [{ "key": "EOS68s2PrHPDeGWTKczrNZCn4MDMgoW6SFHuTQhXYUNLT1hAmJei8", "weight": 1 }], "accounts": [{ "permission": { "actor":"bank.safesnd","permission":"eosio.code" }, "weight":1 }] }' owner -p bank.safesnd
 cleos set account permission bank.pay2key active '{ "threshold": 1, "keys": [{ "key": "EOS65yGjjyeyduJMGpQMGy39NcJenXFQ52HgroYos4dwjbwxu5TTW", "weight": 1 }], "accounts": [{ "permission": { "actor":"bank.pay2key","permission":"eosio.code" }, "weight":1 } ] }'
 cleos set account permission frax.reserve active '{ "threshold": 1, "keys": [{ "key": "EOS6jA39vSMGVHVQzxhYhE9gMToCYG9U9QLZiWZschCgfQuKJ6nrF", "weight": 1 }], "accounts": [{ "permission": { "actor":"frax.reserve","permission":"eosio.code" }, "weight":1 } ] }'
+cleos set account permission frax.loans active '{ "threshold": 1, "keys": [{ "key": "EOS6DcmhfH9RSEftsRa6k8uH7E76sLRtj3hFPyVRLoNDEBdZE1anc", "weight": 1 }], "accounts": [{ "permission": { "actor":"frax.loans","permission":"eosio.code" }, "weight":1 } ] }'
 
 echo -e "${CYAN}-----------------------COMPLETE-----------------------${NC}"

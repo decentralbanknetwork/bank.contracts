@@ -1,8 +1,7 @@
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/types.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/asset.hpp>
+#include <eosio/eosio.hpp>
+#include <eosio/print.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/asset.hpp>
 
 using namespace eosio;
 using namespace std;

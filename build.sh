@@ -3,11 +3,6 @@ echo "Building bank.price..."
 eosio-cpp -abigen bank.price.cpp -o bank.price.wasm -I bank.price.clauses.md -I bank.price.contracts.md
 cd ..
 
-cd bank.token
-echo "Building bank.token..."
-eosio-cpp -abigen bank.token.cpp -o bank.token.wasm -I bank.token.clauses.md -I bank.token.contracts.md
-cd ..
-
 cd bank.safesnd
 echo "Building bank.safesnd..."
 eosio-cpp -abigen bank.safesnd.cpp -o bank.safesnd.wasm
@@ -20,7 +15,7 @@ cd ..
 
 cd bank.pay2key
 echo "Building bank.pay2key..."
-eosio-cpp -abigen bank.pay2key.cpp -o bank.pay2key.wasm -I bank.pay2key.clauses.md -I bank.pay2key.contracts.md
+eosio-cpp -abigen bank.pay2key.cpp -o bank.pay2key.wasm -I .
 cd ..
 
 cd frax.reserve
