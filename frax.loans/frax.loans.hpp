@@ -1,8 +1,7 @@
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/print.hpp>
-#include <eosiolib/types.h>
-#include <eosiolib/crypto.h>
-#include <eosiolib/asset.hpp>
+#include <eosio/eosio.hpp>
+#include <eosio/print.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/asset.hpp>
 
 using namespace eosio;
 using namespace std;
@@ -10,6 +9,7 @@ using namespace std;
 const symbol FRAX_SYMBOL = symbol(symbol_code("FRAX"), 4);
 const symbol FXS_SYMBOL = symbol(symbol_code("FXS"), 4);
 const symbol USDT_SYMBOL = symbol(symbol_code("USDT"), 4);
+const double COLLATERAL_RATIO = 0.75; // Can only borrow upto 75% of collateral
 
 class [[eosio::contract("frax.reserve")]] fraxloans : public contract {
 
@@ -24,6 +24,9 @@ public:
 
     [[eosio::action]]
     void setprice(asset price);
+
+    [[eosio::action]]
+    void liquidate(name user, name executor);
 
     // Public but not a directly callable action
     // Called indirectly by sending EOS to this contract
@@ -47,14 +50,15 @@ public:
         asset loaned;
         name contract;
         asset price; // 4 decimal places, prices in USDT
+        bool allowed_as_collateral;
+        bool can_deposit;
         uint64_t interest_counter;
 
-
-        uint64_t primary_key() const { return supply.symbol.raw(); }
+        uint64_t primary_key() const { return available.symbol.raw(); }
         uint64_t by_contract() const { return contract.value; }
-        uint128_t by_contract_symbol() const { return merge_contract_symbol(contract, supply.symbol); }
+        uint128_t by_contract_symbol() const { return merge_contract_symbol(contract, available.symbol); }
     };
-    typedef eosio::multi_index<"stats"_n, stats_t, 
+    typedef eosio::multi_index<"tokenstats"_n, stats_t, 
        indexed_by<"bycontract"_n, const_mem_fun<stats_t, uint64_t, &stats_t::by_contract>>,
        indexed_by<"byctrsym"_n, const_mem_fun<stats_t, uint128_t, &stats_t::by_contract_symbol>>
     > stats;
