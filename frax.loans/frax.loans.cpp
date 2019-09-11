@@ -24,6 +24,7 @@ void fraxloans::addtoken(name contract, symbol ticker) {
     });
 }
 
+[[eosio::on_notify("*::transfer")]] 
 void fraxloans::deposit( name from, name to, asset quantity, string memo ) {
     if (from == _self) return; // sending tokens, ignore
 
@@ -60,6 +61,7 @@ void fraxloans::deposit( name from, name to, asset quantity, string memo ) {
 
 }
 
+[[eosio::action]]
 void fraxloans::borrow(name borrower, asset quantity) {
     require_auth(borrower);
 
@@ -113,43 +115,54 @@ void fraxloans::borrow(name borrower, asset quantity) {
 }
 
 [[eosio::action]]
-void liquidate(name user, name executor) {
-    // Check if sufficient collateral is present to back loan
-    // NOTE: Both sum_collateral and sum_borrow are in units 1e-8 USDT
-    //accounts acctstbl( _self, user.value );
-    //auto account_it = acctstbl.begin();
-    //uint64_t sum_collateral = 0;
-    //while (account_it != acctstbl.end()) {
-    //    auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
-    //    if (!token_price_it->allowed_as_collateral) continue;
-    //    sum_collateral += account_it->balance.amount * token_price_it->price.amount;
-    //    account_it++;
-    //}
-    //uint64_t sum_borrow = quantity.amount * stat_it->price.amount;
-    //while (account_it != acctstbl.end()) {
-    //    auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
-    //    sum_borrow += account_it->borrowing.amount * token_price_it->price.amount;
-    //    account_it++;
-    //}
-    //check((static_cast<int64_t>(sum_collateral * COLLATERAL_RATIO) < sum_borrow), "Loans are sufficiently backed");
+void fraxloans::repay(name borrower, asset quantity) {
+    require_auth(borrower);
 
-    //// TODO: Send to auction contract
+    check(quantity.amount > 0, "Must repay positive amount");
+
+    // Check ticker is borrowable
+    stats statstbl( _self, _self.value );
+    auto stat_it = statstbl.get(quantity.symbol.raw(), "Token is not supported");
     
+    // Update supply
+    statstbl.modify( stat_it, _self, [&](auto& s) {
+        s.available += quantity;
+        s.loaned -= quantity;
+    });
+
+
+    // Update borrower account
+    accounts acctstbl( _self, borrower.value );
+    auto account_it = acctstbl.find(quantity.symbol.raw());
+    check(account_it != acctstbl.end(), "No borrow balance found for this user");
+    check(account_it->borrowing >= quantity, "Attempting to repay too much");
+    acctstbl.modify( account_it, _self, [&](auto& a) {
+        a.balance -= quantity;
+        a.borrowing -= quantity;
+    });
 }
 
-extern "C" void apply(uint64_t receiver, uint64_t code, uint64_t action)
-{
-    auto _self = receiver;
-    if (code != _self && action == name("transfer").value)
-    {
-        eosio::execute_action(
-            eosio::name(receiver), eosio::name(code), &fraxloans::deposit
-        );
-    }
-    else if (code == _self)
-    {
-        switch (action) {
-            EOSIO_DISPATCH_HELPER( fraxloans, (addtoken) )
-        }
-    }
-}
+//[[eosio::action]]
+//void liquidate(name user, name executor) {
+//     Check if sufficient collateral is present to back loan
+//     NOTE: Both sum_collateral and sum_borrow are in units 1e-8 USDT
+//    accounts acctstbl( _self, user.value );
+//    auto account_it = acctstbl.begin();
+//    uint64_t sum_collateral = 0;
+//    while (account_it != acctstbl.end()) {
+//        auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
+//        if (!token_price_it->allowed_as_collateral) continue;
+//        sum_collateral += account_it->balance.amount * token_price_it->price.amount;
+//        account_it++;
+//    }
+//    uint64_t sum_borrow = quantity.amount * stat_it->price.amount;
+//    while (account_it != acctstbl.end()) {
+//        auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
+//        sum_borrow += account_it->borrowing.amount * token_price_it->price.amount;
+//        account_it++;
+//    }
+//    check((static_cast<int64_t>(sum_collateral * COLLATERAL_RATIO) < sum_borrow), "Loans are sufficiently backed");
+//
+//    // TODO: Send to auction contract
+//    
+//}

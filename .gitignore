@@ -1,4 +1,3 @@
-*.wasm
-*.wast
 .vscode
 *.swp
+build/

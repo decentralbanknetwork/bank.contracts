@@ -1,0 +1,16 @@
+#pragma once
+#include <eosio/testing/tester.hpp>
+
+namespace eosio { namespace testing {
+
+struct contracts {
+   static std::vector<uint8_t> fraxloans_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/../frax.loans/frax.loans.wasm"); }
+   static std::vector<char>    fraxloans_abi() { return read_abi("${CMAKE_BINARY_DIR}/../frax.loans/frax.loans.abi"); }
+
+   static std::vector<uint8_t> fraxreserve_wasm() { return read_wasm("${CMAKE_BINARY_DIR}/../frax.reserve/frax.reserve.wasm"); }
+   static std::vector<char>    fraxreserve_abi() { return read_abi("${CMAKE_BINARY_DIR}/../frax.reserve/frax.reserve.abi"); }
+
+   static std::vector<uint8_t> token_wasm() { return read_wasm("${CMAKE_SOURCE_DIR}/test_contracts/eosio.token/eosio.token.wasm"); }
+   static std::vector<char>    token_abi() { return read_abi("${CMAKE_SOURCE_DIR}/test_contracts/eosio.token/eosio.token.abi"); }
+};
+}} //ns eosio::testing

@@ -6,15 +6,16 @@
 using namespace eosio;
 using namespace std;
 
-const symbol FRAX_SYMBOL = symbol(symbol_code("FRAX"), 4);
-const symbol FXS_SYMBOL = symbol(symbol_code("FXS"), 4);
-const symbol USDT_SYMBOL = symbol(symbol_code("USDT"), 4);
-const double COLLATERAL_RATIO = 0.75; // Can only borrow upto 75% of collateral
-
-class [[eosio::contract("frax.reserve")]] fraxloans : public contract {
+class [[eosio::contract("frax.loans")]] fraxloans : public contract {
 
 public:
     using contract::contract;
+
+    // Constants
+    const symbol FRAX_SYMBOL = symbol(symbol_code("FRAX"), 4);
+    const symbol FXS_SYMBOL = symbol(symbol_code("FXS"), 4);
+    const symbol USDT_SYMBOL = symbol(symbol_code("USDT"), 4);
+    const double COLLATERAL_RATIO = 0.75; // Can only borrow upto 75% of collateral
     
     [[eosio::action]]
     void addtoken(name contract, symbol ticker);
@@ -23,13 +24,17 @@ public:
     void borrow(name borrower, asset quantity);
 
     [[eosio::action]]
-    void setprice(asset price);
+    void repay(name borrower, asset quantity);
 
-    [[eosio::action]]
-    void liquidate(name user, name executor);
+    //[[eosio::action]]
+    //void setprice(asset price);
 
-    // Public but not a directly callable action
-    // Called indirectly by sending EOS to this contract
+    //[[eosio::action]]
+    //void liquidate(name user, name executor);
+    
+	[[eosio::on_notify("tmp::tmp")]] void tmp() { } // temp hack. required to make on_notify work until bug is patched
+
+	[[eosio::on_notify("*::transfer")]] 
     void deposit( name from, name to, asset quantity, string memo );
 
     // Deposits table
