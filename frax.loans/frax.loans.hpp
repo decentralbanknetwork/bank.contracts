@@ -1,6 +1,6 @@
 #include <eosio/eosio.hpp>
+#include <eosio/system.hpp>
 #include <eosio/print.hpp>
-#include <eosio/crypto.hpp>
 #include <eosio/asset.hpp>
 
 using namespace eosio;
@@ -26,8 +26,8 @@ public:
     [[eosio::action]]
     void repay(name borrower, asset quantity);
 
-    //[[eosio::action]]
-    //void setprice(asset price);
+    [[eosio::action]]
+    void setprice(asset price);
 
     //[[eosio::action]]
     //void liquidate(name user, name executor);
@@ -44,7 +44,7 @@ public:
       asset borrowing;
       uint64_t last_updated;
 
-      uint64_t primary_key() const { return balance.symbol.raw(); }
+      uint64_t primary_key() const { return balance.symbol.code().raw(); }
     };
     typedef eosio::multi_index<"accounts"_n, account> accounts;
 
@@ -59,7 +59,7 @@ public:
         bool can_deposit;
         uint64_t interest_counter;
 
-        uint64_t primary_key() const { return available.symbol.raw(); }
+        uint64_t primary_key() const { return available.symbol.code().raw(); }
         uint64_t by_contract() const { return contract.value; }
         uint128_t by_contract_symbol() const { return merge_contract_symbol(contract, available.symbol); }
     };

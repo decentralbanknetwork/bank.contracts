@@ -12,7 +12,7 @@ void fraxloans::addtoken(name contract, symbol ticker) {
     uint128_t merged = merge_contract_symbol(contract, ticker);
     auto existing = contract_sym_index.find(merged);
     check(existing == contract_sym_index.end(), "Token is already registered");
-    check(statstable.find(ticker.raw()) == statstable.end(), "Another token with that ticker already exists");
+    check(statstable.find(ticker.code().raw()) == statstable.end(), "Another token with that ticker already exists");
 
     statstable.emplace(_self, [&](auto& s) {
         s.contract = contract;
@@ -31,6 +31,8 @@ void fraxloans::deposit( name from, name to, asset quantity, string memo ) {
     auto symbol = quantity.symbol;
     check(symbol.is_valid(), "invalid symbol name");
     check(to == _self, "stop trying to hack the contract");
+    check(is_account(from), "from account does not exist");
+    check(is_account(to), "to account does not exist");
 
     // make sure contract and symbol are accepted by contract
     stats statstable(_self, _self.value);
@@ -47,17 +49,24 @@ void fraxloans::deposit( name from, name to, asset quantity, string memo ) {
 
     // create/update entry in table
     accounts deptbl( _self, from.value );
-    auto account_it = deptbl.find(symbol.raw());
+    auto account_it = deptbl.find(symbol.code().raw());
     if (account_it == deptbl.end()) {
         deptbl.emplace( _self, [&](auto& a) {
             a.balance = quantity;
+            a.last_updated = current_time_point().sec_since_epoch();
         });
     }
     else {
         deptbl.modify( account_it, _self, [&](auto& a) {
             a.balance += quantity;
+            a.last_updated = current_time_point().sec_since_epoch();
         });
     }
+
+    // update stats
+    contract_sym_index.modify( existing, _self, [&](auto& s) {
+        s.available += quantity;
+    });
 
 }
 
@@ -69,7 +78,7 @@ void fraxloans::borrow(name borrower, asset quantity) {
 
     // Check ticker is borrowable
     stats statstbl( _self, _self.value );
-    auto stat_it = statstbl.get(quantity.symbol.raw(), "Token is not supported");
+    auto& stat_it = statstbl.get(quantity.symbol.code().raw(), "Token is not supported");
     check(stat_it.available > quantity, "Not enough supply available for requested quantity");
 
     // Check if sufficient collateral is present to back loan
@@ -78,28 +87,28 @@ void fraxloans::borrow(name borrower, asset quantity) {
     auto account_it = acctstbl.begin();
     uint64_t sum_collateral = 0;
     while (account_it != acctstbl.end()) {
-        auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
+        auto token_price_it = statstbl.get(account_it->balance.symbol.code().raw(), "Token is not supported");
         if (!token_price_it.allowed_as_collateral) continue;
         sum_collateral += account_it->balance.amount * token_price_it.price.amount;
         account_it++;
     }
     uint64_t sum_borrow = quantity.amount * stat_it.price.amount;
     while (account_it != acctstbl.end()) {
-        auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
+        auto token_price_it = statstbl.get(account_it->balance.symbol.code().raw(), "Token is not supported");
         sum_borrow += account_it->borrowing.amount * token_price_it.price.amount;
         account_it++;
     }
     check((static_cast<int64_t>(sum_collateral * COLLATERAL_RATIO) > sum_borrow), "Insufficient collateral to back loan");
     
     // Update supply
-    statstbl.modify( stat_it, _self, [&](auto& s) {
+    statstbl.modify( stat_it, _self, [&](auto s) {
         s.available -= quantity;
         s.loaned += quantity;
     });
 
 
     // Update borrower account
-    account_it = acctstbl.find(quantity.symbol.raw());
+    account_it = acctstbl.find(quantity.symbol.code().raw());
     if (account_it == acctstbl.end()) {
         acctstbl.emplace( _self, [&](auto& a) {
             a.balance = quantity;
@@ -122,7 +131,7 @@ void fraxloans::repay(name borrower, asset quantity) {
 
     // Check ticker is borrowable
     stats statstbl( _self, _self.value );
-    auto stat_it = statstbl.get(quantity.symbol.raw(), "Token is not supported");
+    auto stat_it = statstbl.get(quantity.symbol.code().raw(), "Token is not supported");
     
     // Update supply
     statstbl.modify( stat_it, _self, [&](auto& s) {
@@ -133,13 +142,27 @@ void fraxloans::repay(name borrower, asset quantity) {
 
     // Update borrower account
     accounts acctstbl( _self, borrower.value );
-    auto account_it = acctstbl.find(quantity.symbol.raw());
+    auto account_it = acctstbl.find(quantity.symbol.code().raw());
     check(account_it != acctstbl.end(), "No borrow balance found for this user");
     check(account_it->borrowing >= quantity, "Attempting to repay too much");
     acctstbl.modify( account_it, _self, [&](auto& a) {
         a.balance -= quantity;
         a.borrowing -= quantity;
     });
+}
+
+[[eosio::action]]
+void fraxloans::setprice(asset price) {
+    require_auth( _self );
+
+    stats statstable(_self, _self.value);
+    auto stats_it = statstable.find(price.symbol.code().raw());
+    check(stats_it != statstable.end(), "symbol is not supported. check decimal places");
+
+    statstable.modify( stats_it, _self, [&](auto &s) {
+        s.price = price;
+    });
+
 }
 
 //[[eosio::action]]
@@ -150,14 +173,14 @@ void fraxloans::repay(name borrower, asset quantity) {
 //    auto account_it = acctstbl.begin();
 //    uint64_t sum_collateral = 0;
 //    while (account_it != acctstbl.end()) {
-//        auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
+//        auto token_price_it = statstbl.get(account_it->balance.symbol.code().raw(), "Token is not supported");
 //        if (!token_price_it->allowed_as_collateral) continue;
 //        sum_collateral += account_it->balance.amount * token_price_it->price.amount;
 //        account_it++;
 //    }
 //    uint64_t sum_borrow = quantity.amount * stat_it->price.amount;
 //    while (account_it != acctstbl.end()) {
-//        auto token_price_it = statstbl.get(account_it->balance.symbol.raw(), "Token is not supported");
+//        auto token_price_it = statstbl.get(account_it->balance.symbol.code().raw(), "Token is not supported");
 //        sum_borrow += account_it->borrowing.amount * token_price_it->price.amount;
 //        account_it++;
 //    }

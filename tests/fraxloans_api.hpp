@@ -34,12 +34,35 @@ public:
 		mvo()("contract", token_contract)("ticker", ticker));
   }
 
+  action_result borrow(const name& borrower, asset quantity)
+  {
+	return push_action(
+		borrower, contract, N(borrow),
+		mvo()("borrower", borrower)("quantity", quantity));
+  }
+
+  action_result setprice(asset price)
+  {
+	return push_action(
+		contract, contract, N(setprice),
+		mvo()("price", price));
+  }
+
   fc::variant get_account(const account_name& acc, const string& symbolname)
   {
-	auto symb = eosio::chain::symbol::from_string("4,FRAX");
+	auto symb = eosio::chain::symbol::from_string(symbolname);
 	auto symbol_code = symb.to_symbol_code().value;
-	vector<char> data = _tester->get_row_by_account( N(frax.loans), N(alice), N(accounts), symbol_code );
+	vector<char> data = _tester->get_row_by_account( contract, acc, N(accounts), symbol_code );
 	return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "account", data, abi_serializer_max_time );
+  }
+
+  fc::variant get_tokenstats(const string& symbolname)
+  {
+	auto symb = eosio::chain::symbol::from_string(symbolname);
+	auto symbol_code = symb.to_symbol_code().value;
+	vector<char> data = _tester->get_row_by_account( contract, contract, N(tokenstats), symbol_code );
+
+	return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "stats_t", data, abi_serializer_max_time );
   }
 
   action_result push_action(const account_name &signer,
